@@ -38,6 +38,7 @@ function buildDiagnosisPrompt({
   cashBalance,
   debtPayment, debtPaymentItems,
   accountsReceivable,
+  mixedAccounts,
   investments,
 }) {
   const grossProfit = (revenue || 0) - (cogs || 0);
@@ -79,6 +80,7 @@ ${buildItemsList(debtPaymentItems)}
 
 - Investimentos na Empresa: ${formatBRL(investments)}
 - Contas a Receber: ${formatBRL(accountsReceivable)}
+- Mistura conta pessoal/PJ: ${mixedAccounts ? 'SIM — risco crítico de gestão' : 'Não (contas separadas)'}
 
 ${benchmarkBlock}
 
@@ -131,6 +133,7 @@ router.post('/', async (req, res) => {
     cashBalance,
     debtPayment, debtPaymentItems,
     accountsReceivable,
+    mixedAccounts,
     investments,
   } = req.body;
 
@@ -152,6 +155,7 @@ router.post('/', async (req, res) => {
       cashBalance,
       debtPayment, debtPaymentItems,
       accountsReceivable,
+      mixedAccounts,
       investments,
     });
 

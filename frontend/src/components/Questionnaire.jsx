@@ -56,6 +56,18 @@ const QUESTIONS = [
     icon: '📥',
   },
   {
+    field: 'mixedAccounts',
+    type: 'choice',
+    title: 'Você usa a mesma conta bancária para gastos pessoais e do negócio?',
+    subtitle: 'Isso ajuda a identificar riscos financeiros e fiscais no seu diagnóstico.',
+    icon: '🏦',
+    options: [
+      { value: 'yes', label: 'Sim, uso a mesma conta',      detail: 'Dinheiro pessoal e do negócio juntos' },
+      { value: 'no',  label: 'Não, tenho contas separadas', detail: 'Cada um no seu lugar' },
+    ],
+    allowZero: true,
+  },
+  {
     field: 'investments',
     type: 'single',
     title: 'Quanto investiu de volta na empresa esse mês?',
@@ -174,28 +186,57 @@ function ItemizedInput({ items, onChange, exampleItems, allowZero }) {
   );
 }
 
-export default function Questionnaire({ onComplete, onBack }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [values, setValues] = useState({
-    revenue: '',
-    cogs: '',
+// Converte valor numérico para string formatada de input (ex: 1500 → "1.500,00")
+function numToInput(value) {
+  if (!value || value === 0) return '';
+  return formatCurrencyInput(String(Math.round(Math.abs(value) * 100)));
+}
+
+function buildInitialValues(init) {
+  if (!init) return {
+    revenue: '', cogs: '',
     fixedExpenses: [{ desc: '', value: '' }],
     cashBalance: '',
     debtPayment: [{ desc: '', value: '' }],
     accountsReceivable: '',
+    mixedAccounts: null,
     investments: '',
-  });
+  };
+  return {
+    revenue:           numToInput(init.revenue),
+    cogs:              numToInput(init.cogs),
+    fixedExpenses:     init.fixedExpenses > 0
+                         ? [{ desc: 'Ref. mês anterior', value: numToInput(init.fixedExpenses) }]
+                         : [{ desc: '', value: '' }],
+    cashBalance:       init.cashBalance < 0
+                         ? '-' + numToInput(init.cashBalance)
+                         : numToInput(init.cashBalance),
+    debtPayment:       init.debtPayment > 0
+                         ? [{ desc: 'Ref. mês anterior', value: numToInput(init.debtPayment) }]
+                         : [{ desc: '', value: '' }],
+    accountsReceivable: numToInput(init.accountsReceivable),
+    mixedAccounts:     null, // sempre perguntar de novo
+    investments:       numToInput(init.investments),
+  };
+}
+
+export default function Questionnaire({ onComplete, onBack, initialValues = null }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [values, setValues] = useState(() => buildInitialValues(initialValues));
 
   const question = QUESTIONS[currentIndex];
   const currentValue = values[question.field];
   const isItemized = question.type === 'itemized';
+  const isChoice   = question.type === 'choice';
   const progress = ((currentIndex + 1) / QUESTIONS.length) * 100;
 
-  const canProceed = isItemized
-    ? question.allowZero || currentValue.some(item => parseFormattedValue(item.value) > 0)
-    : question.allowZero
-      ? currentValue !== '-'
-      : parseFormattedValue(currentValue) > 0 && currentValue !== '-';
+  const canProceed = isChoice
+    ? currentValue !== null
+    : isItemized
+      ? question.allowZero || currentValue.some(item => parseFormattedValue(item.value) > 0)
+      : question.allowZero
+        ? currentValue !== '-'
+        : parseFormattedValue(currentValue) > 0 && currentValue !== '-';
 
   function handleSingleInput(e) {
     const raw = e.target.value;
@@ -221,6 +262,8 @@ export default function Questionnaire({ onComplete, onBack }) {
             desc: i.desc || 'Item',
             value: parseFormattedValue(i.value),
           }));
+        } else if (type === 'choice') {
+          numericData[field] = val === 'yes';
         } else {
           numericData[field] = parseFormattedValue(val);
         }
@@ -283,8 +326,52 @@ export default function Questionnaire({ onComplete, onBack }) {
           {question.subtitle}
         </p>
 
-        {/* Input — single ou itemizado */}
-        {isItemized ? (
+        {/* Input — choice, single ou itemizado */}
+        {isChoice ? (
+          <div className="space-y-3 mb-2">
+            {question.options.map(opt => {
+              const selected = currentValue === opt.value;
+              const isRisk   = opt.value === 'yes';
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setValues(prev => ({ ...prev, [question.field]: opt.value }))}
+                  className={`w-full text-left rounded-2xl border-2 p-4 transition-all duration-150
+                    ${selected
+                      ? isRisk
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-emerald-400 bg-emerald-50'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Radio indicator */}
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
+                      ${selected
+                        ? isRisk ? 'border-red-500 bg-red-500' : 'border-emerald-500 bg-emerald-500'
+                        : 'border-slate-300'
+                      }`}>
+                      {selected && (
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold leading-tight
+                        ${selected
+                          ? isRisk ? 'text-red-700' : 'text-emerald-700'
+                          : 'text-slate-700'
+                        }`}>
+                        {opt.label}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">{opt.detail}</p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : isItemized ? (
           <ItemizedInput
             items={currentValue}
             onChange={newItems => setValues(prev => ({ ...prev, [question.field]: newItems }))}

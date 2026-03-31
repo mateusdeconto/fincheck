@@ -4,13 +4,15 @@ import Questionnaire from './components/Questionnaire.jsx';
 import Loading from './components/Loading.jsx';
 import Diagnosis from './components/Diagnosis.jsx';
 import Chat from './components/Chat.jsx';
+import MonthlyTracking from './components/MonthlyTracking.jsx';
 
 const STEPS = {
-  ONBOARDING: 'onboarding',
+  ONBOARDING:  'onboarding',
   QUESTIONNAIRE: 'questionnaire',
-  LOADING: 'loading',
-  DIAGNOSIS: 'diagnosis',
-  CHAT: 'chat',
+  LOADING:     'loading',
+  DIAGNOSIS:   'diagnosis',
+  CHAT:        'chat',
+  TRACKING:    'tracking',
 };
 
 const INITIAL_FINANCIAL = {
@@ -22,14 +24,16 @@ const INITIAL_FINANCIAL = {
   debtPayment: 0,
   debtPaymentItems: [],
   accountsReceivable: 0,
+  mixedAccounts: false,
   investments: 0,
 };
 
 export default function App() {
-  const [step, setStep] = useState(STEPS.ONBOARDING);
+  const [step, setStep]                 = useState(STEPS.ONBOARDING);
   const [businessData, setBusinessData] = useState({ businessName: '', segment: '' });
   const [financialData, setFinancialData] = useState(INITIAL_FINANCIAL);
-  const [diagnosis, setDiagnosis] = useState('');
+  const [diagnosis, setDiagnosis]       = useState('');
+  const [initialValues, setInitialValues] = useState(null); // pre-fill for questionnaire
 
   function handleOnboardingComplete(data) {
     setBusinessData(data);
@@ -51,6 +55,15 @@ export default function App() {
     setBusinessData({ businessName: '', segment: '' });
     setFinancialData(INITIAL_FINANCIAL);
     setDiagnosis('');
+    setInitialValues(null);
+  }
+
+  // "Refazer diagnóstico do mês" — pré-preenche questionário com mês anterior
+  function handleRefill(prevEntry) {
+    setInitialValues(prevEntry || null);
+    setDiagnosis('');
+    setFinancialData(INITIAL_FINANCIAL);
+    setStep(STEPS.QUESTIONNAIRE);
   }
 
   return (
@@ -64,6 +77,7 @@ export default function App() {
           <Questionnaire
             onComplete={handleQuestionnaireComplete}
             onBack={() => setStep(STEPS.ONBOARDING)}
+            initialValues={initialValues}
           />
         )}
 
@@ -82,7 +96,17 @@ export default function App() {
             financialData={financialData}
             diagnosis={diagnosis}
             onOpenChat={() => setStep(STEPS.CHAT)}
+            onOpenTracking={() => setStep(STEPS.TRACKING)}
             onRestart={handleRestart}
+          />
+        )}
+
+        {step === STEPS.TRACKING && (
+          <MonthlyTracking
+            businessData={businessData}
+            financialData={financialData}
+            onBack={() => setStep(STEPS.DIAGNOSIS)}
+            onRefill={handleRefill}
           />
         )}
 

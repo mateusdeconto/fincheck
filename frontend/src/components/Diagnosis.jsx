@@ -53,6 +53,91 @@ function formatBRL(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 }
 
+// Extrai o primeiro item da seção "Pontos de Atenção"
+function extractFirstAlert(text) {
+  if (!text) return null;
+  const section = text.split(/##\s*⚠️\s*Pontos de Atenção/)[1];
+  if (!section) return null;
+  for (const line of section.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('##')) break;
+    if (t.startsWith('• ') || t.startsWith('- ')) {
+      return t.slice(2).replace(/\*\*/g, '').trim().slice(0, 120);
+    }
+  }
+  return null;
+}
+
+// Extrai a primeira recomendação da seção "Recomendações para essa semana"
+function extractFirstRecommendation(text) {
+  if (!text) return null;
+  const section = text.split(/##\s*🎯\s*Recomendações/)[1];
+  if (!section) return null;
+  for (const line of section.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('##')) break;
+    if (/^\*?\*?1\./.test(t)) {
+      return t.replace(/^\*?\*?1\.\s*/, '').replace(/\*\*/g, '').trim().slice(0, 140);
+    }
+  }
+  return null;
+}
+
+function buildWhatsAppMessage(businessData, financialData, diagnosis, metrics, healthStatus) {
+  const today  = new Date().toLocaleDateString('pt-BR');
+  const status = healthStatus ? `${healthStatus.dot} ${healthStatus.label}` : '—';
+  const alert  = extractFirstAlert(diagnosis);
+  const rec    = extractFirstRecommendation(diagnosis);
+
+  const lines = [
+    `📊 *Diagnóstico FinCheck — ${businessData.businessName}*`,
+    `📅 ${today}`,
+    ``,
+    `*Situação:* ${status}`,
+    `💰 Receita: ${formatBRL(financialData.revenue)}`,
+    `📈 Margem líquida: ${metrics.netMargin.toFixed(1)}%`,
+    `💵 Saldo em caixa: ${formatBRL(financialData.cashBalance)}`,
+    ``,
+    ...(alert ? [`*Principal alerta:* ${alert}`, ``] : []),
+    ...(rec   ? [`*Recomendação prioritária:* ${rec}`, ``] : []),
+    `Análise completa em: https://fincheck-production-27bd.up.railway.app`,
+  ];
+
+  return lines.join('\n');
+}
+
+function calcProjection(f) {
+  const cash       = f.cashBalance    || 0;
+  const revenue    = f.revenue        || 0;
+  const fixed      = f.fixedExpenses  || 0;
+  const debt       = f.debtPayment    || 0;
+
+  // Projeção conservadora: mantém receita igual, paga custos fixos + dívidas
+  const projected  = cash + revenue - fixed - debt;
+  const dailyCost  = fixed / 30;
+
+  // Semáforo
+  // 🔴 negativo  |  🟡 positivo mas < 1 mês de custo fixo  |  🟢 ≥ 1 mês de custo fixo
+  const status = projected < 0 ? 'red' : projected < fixed ? 'yellow' : 'green';
+
+  // Dias de operação cobertos
+  const coverageDays = dailyCost > 0 && projected > 0
+    ? Math.floor(projected / dailyCost)
+    : 0;
+
+  // Frase explicativa
+  let sentence;
+  if (status === 'green') {
+    sentence = `No ritmo atual, você vai encerrar o mês com ${formatBRL(projected)} no caixa — suficiente para cobrir aproximadamente ${coverageDays} dias de operação.`;
+  } else if (status === 'yellow') {
+    sentence = `Caixa vai ficar positivo (${formatBRL(projected)}), mas abaixo de um mês de custos fixos. Qualquer imprevisto ou queda de receita pode comprometer as contas.`;
+  } else {
+    sentence = `Atenção: no ritmo atual, seu caixa ficará ${formatBRL(projected)} no vermelho. Será preciso cortar custos ou buscar receita extra para fechar o mês.`;
+  }
+
+  return { projected, coverageDays, status, sentence, cash, revenue, fixed, debt };
+}
+
 function calcMetrics(f) {
   const grossProfit = (f.revenue || 0) - (f.cogs || 0);
   const grossMargin = f.revenue > 0 ? ((grossProfit / f.revenue) * 100) : 0;
@@ -188,10 +273,11 @@ function downloadPDF(businessData, diagnosis, renderedHtml, healthStatus) {
   win.document.close();
 }
 
-export default function Diagnosis({ businessData, financialData, diagnosis, onOpenChat, onRestart }) {
-  const renderedHtml = useMemo(() => renderMarkdown(diagnosis), [diagnosis]);
-  const healthStatus = useMemo(() => extractHealthStatus(diagnosis), [diagnosis]);
-  const metrics = useMemo(() => calcMetrics(financialData), [financialData]);
+export default function Diagnosis({ businessData, financialData, diagnosis, onOpenChat, onOpenTracking, onRestart }) {
+  const renderedHtml  = useMemo(() => renderMarkdown(diagnosis),        [diagnosis]);
+  const healthStatus  = useMemo(() => extractHealthStatus(diagnosis),   [diagnosis]);
+  const metrics       = useMemo(() => calcMetrics(financialData),       [financialData]);
+  const projection    = useMemo(() => calcProjection(financialData),    [financialData]);
 
   const netProfitPositive = metrics.netProfit >= 0;
 
@@ -215,6 +301,26 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
           <span className={`health-tag ${healthStatus.color} shadow-sm`}>
             {healthStatus.dot} Saúde Financeira: {healthStatus.label}
           </span>
+        </div>
+      )}
+
+      {/* ── Alerta: mistura financeira ── */}
+      {financialData.mixedAccounts && (
+        <div className="rounded-2xl p-5 border-2 border-red-400"
+             style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%)' }}>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-700 mb-1">⚠️ Risco: Mistura financeira detectada</p>
+              <p className="text-sm text-red-600 leading-relaxed">
+                Misturar dinheiro pessoal com o do negócio é um dos principais motivos de falência de pequenas empresas no Brasil. Você não consegue saber se o negócio dá lucro de verdade, e pode ter problemas com a Receita Federal. Abra uma conta PJ separada — a maioria dos bancos digitais oferece isso gratuitamente.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -260,6 +366,73 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         <div className="diagnosis-content" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
       </div>
 
+      {/* ── Projeção 30 dias ── */}
+      {(() => {
+        const p = projection;
+        const statusMap = {
+          green:  { bg: 'bg-emerald-50',  border: 'border-emerald-200', dot: 'bg-emerald-500', text: 'text-emerald-700',  label: 'Saldo positivo',    icon: '🟢' },
+          yellow: { bg: 'bg-amber-50',    border: 'border-amber-200',   dot: 'bg-amber-400',   text: 'text-amber-700',    label: 'Atenção',           icon: '🟡' },
+          red:    { bg: 'bg-red-50',      border: 'border-red-200',     dot: 'bg-red-500',     text: 'text-red-700',      label: 'Caixa negativo',    icon: '🔴' },
+        };
+        const s = statusMap[p.status];
+
+        return (
+          <div className="card p-6">
+            {/* Header */}
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-navy-50 flex items-center justify-center">
+                <svg className="w-4 h-4 text-navy-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 leading-tight">Projeção dos próximos 30 dias</h3>
+                <p className="text-xs text-slate-400">Com base nos dados do mês atual</p>
+              </div>
+            </div>
+
+            {/* Semáforo + valor */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${s.bg} border ${s.border}`}>
+                <div className={`w-5 h-5 rounded-full ${s.dot}`} />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{s.label}</p>
+                <p className={`text-2xl font-black tracking-tight ${s.text}`}>{formatBRL(p.projected)}</p>
+                <p className="text-xs text-slate-400">saldo projetado</p>
+              </div>
+            </div>
+
+            {/* Frase explicativa */}
+            <div className={`rounded-xl p-3 mb-4 ${s.bg} border ${s.border}`}>
+              <p className={`text-sm leading-relaxed ${s.text}`}>{p.sentence}</p>
+            </div>
+
+            {/* Breakdown da conta */}
+            <div className="space-y-1.5 text-xs">
+              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-2">Como calculamos</p>
+              {[
+                { label: '(+) Caixa atual',      value: p.cash,     sign: '+' },
+                { label: '(+) Receita do mês',   value: p.revenue,  sign: '+' },
+                { label: '(−) Gastos fixos',      value: p.fixed,    sign: '−' },
+                { label: '(−) Dívidas/parcelas',  value: p.debt,     sign: '−' },
+              ].map(row => (
+                <div key={row.label} className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-500">{row.label}</span>
+                  <span className={`font-semibold tabular-nums ${row.sign === '−' ? 'text-slate-500' : 'text-slate-700'}`}>
+                    {row.sign === '−' ? '−' : '+'} {formatBRL(row.value)}
+                  </span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-1.5">
+                <span className="font-bold text-slate-700">= Projeção 30 dias</span>
+                <span className={`font-black tabular-nums ${s.text}`}>{formatBRL(p.projected)}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Exportações */}
       <div className="export-section">
         <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -294,9 +467,35 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         </div>
       </div>
 
+      {/* WhatsApp */}
+      <button
+        onClick={() => {
+          const msg = buildWhatsAppMessage(businessData, financialData, diagnosis, metrics, healthStatus);
+          window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        }}
+        className="w-full py-3.5 px-6 rounded-2xl font-semibold text-white
+                   flex items-center justify-center gap-2.5
+                   active:scale-[0.98] transition-all duration-150"
+        style={{ background: 'linear-gradient(135deg, #25d366 0%, #128c7e 100%)', boxShadow: '0 4px 14px rgba(37,211,102,0.35)' }}
+      >
+        {/* WhatsApp logo SVG */}
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Compartilhar no WhatsApp
+      </button>
+
       {/* Ações principais */}
       <div className="space-y-3">
-        <button onClick={onOpenChat} className="btn-primary">
+        <button onClick={onOpenTracking} className="btn-primary">
+          <span className="flex items-center justify-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+            Acompanhamento mensal
+          </span>
+        </button>
+        <button onClick={onOpenChat} className="btn-secondary">
           <span className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
