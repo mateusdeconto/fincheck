@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Mensagens que aparecem enquanto a IA processa — rotacionam a cada 3s
@@ -11,10 +11,18 @@ const LOADING_MESSAGES = [
   'Quase pronto! Finalizando diagnóstico...',
 ];
 
+const MAX_AUTO_RETRIES = 2;
+
+function isOverloadedMsg(msg) {
+  return msg && (msg.toLowerCase().includes('sobrecarregad') || msg.toLowerCase().includes('overload'));
+}
+
 export default function Loading({ businessData, financialData, onComplete, onError }) {
   const [messageIndex, setMessageIndex] = useState(0);
-  const [error, setError] = useState(null);
-  const fetchedRef = useRef(false); // evita chamada dupla no StrictMode
+  const [error, setError]               = useState(null);
+  const [countdown, setCountdown]       = useState(null); // segundos até auto-retry
+  const autoRetryCount                  = useRef(0);
+  const fetchedRef                      = useRef(false);
 
   // Rotaciona as mensagens de loading
   useEffect(() => {
@@ -24,13 +32,10 @@ export default function Loading({ businessData, financialData, onComplete, onErr
     return () => clearInterval(interval);
   }, []);
 
-  // Inicia o streaming do diagnóstico ao montar
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-
-    async function fetchDiagnosis() {
-      try {
+  const fetchDiagnosis = useCallback(async () => {
+    setError(null);
+    setCountdown(null);
+    try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
@@ -83,23 +88,82 @@ export default function Loading({ businessData, financialData, onComplete, onErr
 
         // Fallback se [DONE] não foi enviado
         if (fullText) onComplete(fullText);
-      } catch (err) {
-        console.error('Erro no diagnóstico:', err);
-        setError(err.message || 'Erro desconhecido');
+    } catch (err) {
+      console.error('Erro no diagnóstico:', err);
+      const msg = err.message || 'Erro desconhecido';
+
+      if (isOverloadedMsg(msg) && autoRetryCount.current < MAX_AUTO_RETRIES) {
+        // Auto-retry com countdown de 10s
+        autoRetryCount.current += 1;
+        let secs = 10;
+        setCountdown(secs);
+        const tick = setInterval(() => {
+          secs -= 1;
+          if (secs <= 0) {
+            clearInterval(tick);
+            setCountdown(null);
+            fetchDiagnosis();
+          } else {
+            setCountdown(secs);
+          }
+        }, 1000);
+      } else {
+        setError(msg);
       }
     }
-
-    fetchDiagnosis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessData, financialData, onComplete]);
 
-  if (error) {
+  // Inicia o streaming ao montar
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetchDiagnosis();
+  }, [fetchDiagnosis]);
+
+  // Tela de countdown (auto-retry)
+  if (countdown !== null) {
     return (
       <div className="card p-8 text-center animate-fade-in">
-        <div className="text-4xl mb-4">😕</div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Algo deu errado</h2>
-        <p className="text-slate-500 text-sm mb-6">{error}</p>
-        <button onClick={onError} className="btn-primary">
-          ← Tentar novamente
+        <div className="text-4xl mb-4">⏳</div>
+        <h2 className="text-lg font-bold text-slate-800 mb-2">A IA está sobrecarregada</h2>
+        <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+          Muitas pessoas usando ao mesmo tempo.<br />
+          Tentando novamente automaticamente em…
+        </p>
+        <div className="w-16 h-16 rounded-full border-4 border-navy-200 flex items-center justify-center mx-auto mb-6">
+          <span className="text-2xl font-black text-navy-600">{countdown}</span>
+        </div>
+        <button onClick={() => { setCountdown(null); fetchDiagnosis(); }} className="btn-back text-sm py-3">
+          Tentar agora
+        </button>
+      </div>
+    );
+  }
+
+  if (error) {
+    const overloaded = isOverloadedMsg(error);
+    return (
+      <div className="card p-8 text-center animate-fade-in">
+        <div className="text-4xl mb-4">{overloaded ? '🔄' : '😕'}</div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">
+          {overloaded ? 'IA temporariamente indisponível' : 'Algo deu errado'}
+        </h2>
+        <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+          {overloaded
+            ? 'A IA da Anthropic está com alta demanda agora. Aguarde alguns segundos e tente novamente — costuma resolver rapidamente.'
+            : error}
+        </p>
+        <button onClick={() => { autoRetryCount.current = 0; fetchDiagnosis(); }} className="btn-primary">
+          <span className="flex items-center justify-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Tentar novamente
+          </span>
+        </button>
+        <button onClick={onError} className="btn-back mt-3 text-sm py-3">
+          Voltar ao formulário
         </button>
       </div>
     );

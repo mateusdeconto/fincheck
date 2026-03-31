@@ -147,37 +147,60 @@ router.post('/', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.flushHeaders();
 
-  try {
-    const prompt = buildDiagnosisPrompt({
-      businessName, segment,
-      revenue, cogs,
-      fixedExpenses, fixedExpensesItems,
-      cashBalance,
-      debtPayment, debtPaymentItems,
-      accountsReceivable,
-      mixedAccounts,
-      investments,
-    });
+  const prompt = buildDiagnosisPrompt({
+    businessName, segment,
+    revenue, cogs,
+    fixedExpenses, fixedExpensesItems,
+    cashBalance,
+    debtPayment, debtPaymentItems,
+    accountsReceivable,
+    mixedAccounts,
+    investments,
+  });
 
-    const stream = await getClient().messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
-    });
+  const MAX_RETRIES = 3;
+  const isOverloaded = (err) =>
+    err.status === 529 ||
+    (typeof err.message === 'string' && err.message.toLowerCase().includes('overload'));
 
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
-        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const stream = await getClient().messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+        }
       }
-    }
 
-    res.write('data: [DONE]\n\n');
-    res.end();
-  } catch (error) {
-    console.error('Erro ao chamar Anthropic API:', error.status, error.message);
-    const msg = error.status === 401 ? 'API key inválida.' : error.message || 'Erro ao gerar diagnóstico.';
-    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-    res.end();
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    } catch (error) {
+      console.error(`Erro Anthropic (tentativa ${attempt}/${MAX_RETRIES}):`, error.status, error.message);
+
+      if (isOverloaded(error) && attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+
+      let msg;
+      if (error.status === 401) {
+        msg = 'Chave de API inválida. Contate o suporte.';
+      } else if (isOverloaded(error)) {
+        msg = 'A IA está temporariamente sobrecarregada. Aguarde alguns segundos e tente novamente.';
+      } else {
+        msg = 'Erro ao gerar diagnóstico. Tente novamente em instantes.';
+      }
+
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+      res.end();
+      return;
+    }
   }
 });
 
