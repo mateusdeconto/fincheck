@@ -1,64 +1,56 @@
 import { useState } from 'react';
 
 // Médias setoriais para PMEs brasileiras (fontes: SEBRAE, Deloitte SME, dados setoriais IBGE/FGV)
+// Fontes: SEBRAE (restaurante/CMV), StartupHero/dados públicos empresas brasileiras (demais setores)
+// Ajustados para refletir PMEs, não grandes empresas de capital aberto
 export const SECTOR_BENCHMARKS = {
   restaurante: {
-    grossMargin: [58, 70], netMargin: [3, 9], cmvPct: [28, 38],
-    ebitdaMargin: [8, 16],
-    tip: 'Controle do CMV e desperdício são os maiores alavancadores de lucro no setor de alimentação.',
+    grossMargin: [55, 70], netMargin: [3, 9], cmvPct: [30, 40],
+    tip: 'Controle do CMV (custo dos insumos) é o maior alavancador de lucro no setor. Ideal: CMV abaixo de 35%.',
     color: 'orange',
   },
   varejo: {
-    grossMargin: [30, 50], netMargin: [2, 6], cmvPct: [50, 68],
-    ebitdaMargin: [4, 10],
+    grossMargin: [25, 42], netMargin: [2, 8], cmvPct: [55, 72],
     tip: 'Giro de estoque e negociação com fornecedores definem a rentabilidade no varejo.',
     color: 'blue',
   },
   servicos: {
-    grossMargin: [50, 72], netMargin: [10, 22], cmvPct: [20, 40],
-    ebitdaMargin: [15, 28],
-    tip: 'Serviços têm as melhores margens — precificação correta e retenção de clientes são a chave.',
+    grossMargin: [38, 55], netMargin: [8, 15], cmvPct: [28, 48],
+    tip: 'Precificação correta e retenção de clientes são os maiores drivers de lucro em serviços.',
     color: 'indigo',
   },
   saude: {
-    grossMargin: [55, 75], netMargin: [8, 18], cmvPct: [18, 35],
-    ebitdaMargin: [12, 22],
+    grossMargin: [45, 60], netMargin: [6, 12], cmvPct: [25, 40],
     tip: 'Fidelização de pacientes e gestão eficiente da agenda são os principais drivers de lucro.',
     color: 'red',
   },
   beleza: {
-    grossMargin: [50, 68], netMargin: [8, 18], cmvPct: [15, 30],
-    ebitdaMargin: [12, 20],
+    grossMargin: [40, 58], netMargin: [7, 14], cmvPct: [18, 35],
     tip: 'Recorrência de clientes e ticket médio são os indicadores mais importantes.',
     color: 'pink',
   },
   tecnologia: {
-    grossMargin: [60, 82], netMargin: [10, 28], cmvPct: [12, 28],
-    ebitdaMargin: [15, 32],
-    tip: 'Margens altas, mas custo de aquisição de clientes (CAC) e churn podem corroer os lucros.',
+    grossMargin: [50, 70], netMargin: [5, 15], cmvPct: [15, 35],
+    tip: 'Custo de aquisição de clientes (CAC) e churn são os maiores riscos para margem em tech.',
     color: 'violet',
   },
   construcao: {
-    grossMargin: [18, 35], netMargin: [4, 12], cmvPct: [60, 78],
-    ebitdaMargin: [6, 14],
+    grossMargin: [20, 32], netMargin: [5, 12], cmvPct: [62, 78],
     tip: 'Planejamento de obra e controle rigoroso de materiais evitam o estouro de custos.',
     color: 'amber',
   },
   educacao: {
-    grossMargin: [60, 80], netMargin: [12, 28], cmvPct: [12, 28],
-    ebitdaMargin: [18, 35],
+    grossMargin: [45, 58], netMargin: [4, 10], cmvPct: [20, 38],
     tip: 'Retenção de alunos e custo de captação (CAC) são os indicadores mais críticos do setor.',
     color: 'emerald',
   },
   industria: {
-    grossMargin: [28, 45], netMargin: [4, 9], cmvPct: [52, 70],
-    ebitdaMargin: [7, 14],
+    grossMargin: [25, 42], netMargin: [5, 10], cmvPct: [52, 70],
     tip: 'Eficiência produtiva e negociação de insumos são os maiores determinantes de margem.',
     color: 'slate',
   },
   outro: {
-    grossMargin: [35, 60], netMargin: [5, 15], cmvPct: [30, 55],
-    ebitdaMargin: [8, 20],
+    grossMargin: [30, 45], netMargin: [5, 10], cmvPct: [40, 62],
     tip: 'Compare seus números com metas específicas do seu mercado para ter uma referência clara.',
     color: 'gray',
   },
@@ -326,7 +318,7 @@ export default function Onboarding({ onComplete }) {
                     <svg className="w-3 h-3 text-navy-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                     </svg>
-                    <span className="text-[10px] font-bold text-navy-600">SEBRAE</span>
+                    <span className="text-[10px] font-bold text-navy-600">Estimativa</span>
                   </div>
                 </div>
 

@@ -16,17 +16,19 @@ function buildItemsList(items) {
   return items.map(i => `  • ${i.desc}: ${formatBRL(i.value)}`).join('\n');
 }
 
+// Fontes: SEBRAE (restaurante/CMV), dados públicos de empresas brasileiras (demais)
+// Ajustados para PMEs, não grandes empresas de capital aberto
 const SECTOR_BENCHMARKS = {
-  restaurante: { grossMargin: [58, 70], netMargin: [3, 9],  cmvPct: [28, 38], name: 'Restaurante / Alimentação' },
-  varejo:      { grossMargin: [30, 50], netMargin: [2, 6],  cmvPct: [50, 68], name: 'Varejo / Comércio' },
-  servicos:    { grossMargin: [50, 72], netMargin: [10, 22], cmvPct: [20, 40], name: 'Serviços' },
-  saude:       { grossMargin: [55, 75], netMargin: [8, 18], cmvPct: [18, 35], name: 'Saúde / Bem-estar' },
-  beleza:      { grossMargin: [50, 68], netMargin: [8, 18], cmvPct: [15, 30], name: 'Beleza / Estética' },
-  tecnologia:  { grossMargin: [60, 82], netMargin: [10, 28], cmvPct: [12, 28], name: 'Tecnologia / Digital' },
-  construcao:  { grossMargin: [18, 35], netMargin: [4, 12], cmvPct: [60, 78], name: 'Construção / Reforma' },
-  educacao:    { grossMargin: [60, 80], netMargin: [12, 28], cmvPct: [12, 28], name: 'Educação / Cursos' },
-  industria:   { grossMargin: [28, 45], netMargin: [4, 9],  cmvPct: [52, 70], name: 'Indústria / Fabricação' },
-  outro:       { grossMargin: [35, 60], netMargin: [5, 15], cmvPct: [30, 55], name: 'Outro segmento' },
+  restaurante: { grossMargin: [55, 70], netMargin: [3, 9],  cmvPct: [30, 40], name: 'Restaurante / Alimentação' },
+  varejo:      { grossMargin: [25, 42], netMargin: [2, 8],  cmvPct: [55, 72], name: 'Varejo / Comércio' },
+  servicos:    { grossMargin: [38, 55], netMargin: [8, 15], cmvPct: [28, 48], name: 'Serviços' },
+  saude:       { grossMargin: [45, 60], netMargin: [6, 12], cmvPct: [25, 40], name: 'Saúde / Bem-estar' },
+  beleza:      { grossMargin: [40, 58], netMargin: [7, 14], cmvPct: [18, 35], name: 'Beleza / Estética' },
+  tecnologia:  { grossMargin: [50, 70], netMargin: [5, 15], cmvPct: [15, 35], name: 'Tecnologia / Digital' },
+  construcao:  { grossMargin: [20, 32], netMargin: [5, 12], cmvPct: [62, 78], name: 'Construção / Reforma' },
+  educacao:    { grossMargin: [45, 58], netMargin: [4, 10], cmvPct: [20, 38], name: 'Educação / Cursos' },
+  industria:   { grossMargin: [25, 42], netMargin: [5, 10], cmvPct: [52, 70], name: 'Indústria / Fabricação' },
+  outro:       { grossMargin: [30, 45], netMargin: [5, 10], cmvPct: [40, 62], name: 'Outro segmento' },
 };
 
 function buildDiagnosisPrompt({
