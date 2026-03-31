@@ -246,7 +246,7 @@ export default function Onboarding({ onComplete }) {
                 className="w-full pl-10 pr-4 py-3.5 rounded-xl border-2 border-slate-200
                            focus:border-navy-500 focus:bg-navy-50/20
                            outline-none transition-all text-slate-800 placeholder:text-slate-300 text-sm font-medium"
-                autoFocus
+                autoComplete="organization"
                 maxLength={60}
               />
             </div>
