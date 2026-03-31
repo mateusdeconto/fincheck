@@ -16,6 +16,19 @@ function buildItemsList(items) {
   return items.map(i => `  • ${i.desc}: ${formatBRL(i.value)}`).join('\n');
 }
 
+const SECTOR_BENCHMARKS = {
+  restaurante: { grossMargin: [58, 70], netMargin: [3, 9],  cmvPct: [28, 38], name: 'Restaurante / Alimentação' },
+  varejo:      { grossMargin: [30, 50], netMargin: [2, 6],  cmvPct: [50, 68], name: 'Varejo / Comércio' },
+  servicos:    { grossMargin: [50, 72], netMargin: [10, 22], cmvPct: [20, 40], name: 'Serviços' },
+  saude:       { grossMargin: [55, 75], netMargin: [8, 18], cmvPct: [18, 35], name: 'Saúde / Bem-estar' },
+  beleza:      { grossMargin: [50, 68], netMargin: [8, 18], cmvPct: [15, 30], name: 'Beleza / Estética' },
+  tecnologia:  { grossMargin: [60, 82], netMargin: [10, 28], cmvPct: [12, 28], name: 'Tecnologia / Digital' },
+  construcao:  { grossMargin: [18, 35], netMargin: [4, 12], cmvPct: [60, 78], name: 'Construção / Reforma' },
+  educacao:    { grossMargin: [60, 80], netMargin: [12, 28], cmvPct: [12, 28], name: 'Educação / Cursos' },
+  industria:   { grossMargin: [28, 45], netMargin: [4, 9],  cmvPct: [52, 70], name: 'Indústria / Fabricação' },
+  outro:       { grossMargin: [35, 60], netMargin: [5, 15], cmvPct: [30, 55], name: 'Outro segmento' },
+};
+
 function buildDiagnosisPrompt({
   businessName, segment,
   revenue, cogs,
@@ -32,6 +45,15 @@ function buildDiagnosisPrompt({
   const netMargin = revenue > 0 ? ((netProfit / revenue) * 100).toFixed(1) : 0;
   const debtRatio = revenue > 0 ? (((debtPayment || 0) / revenue) * 100).toFixed(1) : 0;
   const breakEven = grossMargin > 0 ? ((fixedExpenses || 0) / (grossMargin / 100)) : 0;
+
+  const bench = SECTOR_BENCHMARKS[segment] || SECTOR_BENCHMARKS['outro'];
+  const actualCmvPct = revenue > 0 ? ((cogs / revenue) * 100).toFixed(1) : 0;
+  const benchmarkBlock = `
+BENCHMARK SETORIAL — ${bench.name} (fonte: SEBRAE / médias de PMEs brasileiras):
+- Margem Bruta típica: ${bench.grossMargin[0]}%–${bench.grossMargin[1]}%  →  Empresa: ${grossMargin}% ${parseFloat(grossMargin) >= bench.grossMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- Margem Líquida típica: ${bench.netMargin[0]}%–${bench.netMargin[1]}%  →  Empresa: ${netMargin}% ${parseFloat(netMargin) >= bench.netMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- CMV/Receita típico: ${bench.cmvPct[0]}%–${bench.cmvPct[1]}%  →  Empresa: ${actualCmvPct}% ${parseFloat(actualCmvPct) <= bench.cmvPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
+Use esses benchmarks no diagnóstico para contextualizar o desempenho da empresa vs. mercado.`;
 
   return `Você é um consultor financeiro especialista em pequenas e médias empresas brasileiras.
 Analise os dados financeiros abaixo e gere um diagnóstico completo.
@@ -56,6 +78,8 @@ ${buildItemsList(debtPaymentItems)}
 - Investimentos na Empresa: ${formatBRL(investments)}
 - Contas a Receber: ${formatBRL(accountsReceivable)}
 
+${benchmarkBlock}
+
 CÁLCULOS AUTOMATIZADOS (use esses valores nos textos):
 - Lucro Líquido (o que vai pro bolso do dono): ${formatBRL(netProfit)}
 - Margem Líquida: ${netMargin}%
@@ -71,7 +95,7 @@ CLASSIFICAÇÃO DA SAÚDE FINANCEIRA (use apenas uma):
 GERE O DIAGNÓSTICO em português, em exatamente 4 seções com os títulos EXATOS abaixo:
 
 ## 🏢 Resumo Executivo
-[3 parágrafos curtos. Explique como está o negócio em linguagem de dono. Mencione obrigatoriamente: classificação de saúde financeira (ex: "Saúde Financeira: 🟡 Atenção"), o lucro líquido real (o que vai pro bolso), e o ponto de equilíbrio. Tom direto e humano.]
+[3 parágrafos curtos. Explique como está o negócio em linguagem de dono. Mencione obrigatoriamente: classificação de saúde financeira (ex: "Saúde Financeira: 🟡 Atenção"), o lucro líquido real (o que vai pro bolso), o ponto de equilíbrio, e como a empresa se compara à média setorial em pelo menos uma métrica. Tom direto e humano.]
 
 ## ⚠️ Pontos de Atenção
 [Até 3 alertas no formato:
