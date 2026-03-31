@@ -158,7 +158,7 @@ router.post('/', async (req, res) => {
     investments,
   });
 
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 6;
   const isOverloaded = (err) =>
     err.status === 529 ||
     (typeof err.message === 'string' && err.message.toLowerCase().includes('overload'));
@@ -184,7 +184,8 @@ router.post('/', async (req, res) => {
       console.error(`Erro Anthropic (tentativa ${attempt}/${MAX_RETRIES}):`, error.status, error.message);
 
       if (isOverloaded(error) && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, 2000 * attempt));
+        // Backoff progressivo: 4s, 8s, 12s, 16s, 20s
+        await new Promise(r => setTimeout(r, 4000 * attempt));
         continue;
       }
 

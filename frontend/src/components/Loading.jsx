@@ -11,7 +11,7 @@ const LOADING_MESSAGES = [
   'Quase pronto! Finalizando diagnóstico...',
 ];
 
-const MAX_AUTO_RETRIES = 2;
+const MAX_AUTO_RETRIES = 4;
 
 function isOverloadedMsg(msg) {
   return msg && (msg.toLowerCase().includes('sobrecarregad') || msg.toLowerCase().includes('overload'));
@@ -95,7 +95,7 @@ export default function Loading({ businessData, financialData, onComplete, onErr
       if (isOverloadedMsg(msg) && autoRetryCount.current < MAX_AUTO_RETRIES) {
         // Auto-retry com countdown de 10s
         autoRetryCount.current += 1;
-        let secs = 10;
+        let secs = 15;
         setCountdown(secs);
         const tick = setInterval(() => {
           secs -= 1;
