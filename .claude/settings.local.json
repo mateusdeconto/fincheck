@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(node server.js)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(cmd /c \"dir /a /s \"\"C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\"\"\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont'' -Recurse -ErrorAction SilentlyContinue | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont'' | ForEach-Object { $_FullName }\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(powershell.exe -NoProfile -Command \"dir ''C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont''\")",
+      "Bash(powershell.exe -NoProfile -NonInteractive -Command \":*)",
+      "Bash(cmd.exe /c \"powershell -Command \"\"Add-Type -Assembly ''System.IO.Compression.FileSystem''; $zip = [System.IO.Compression.ZipFile]::Open\\(''C:\\\\Users\\\\mateu\\\\Desktop\\\\fincheck.zip'', ''Create''\\); [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile\\($zip, ''C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\\\\README.md'', ''README.md''\\); $zip.Dispose\\(\\); Write-Host done\"\" 2>&1\")",
+      "Bash(python3 -c \":*)",
+      "Bash(node -e \"console.log\\(''node works''\\)\")",
+      "Bash(echo exit:$?)",
+      "mcp__aefd6774-3826-44b9-9e16-2f8b622ce9bb__gmail_create_draft",
+      "Bash(gh repo:*)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}
