@@ -4,7 +4,6 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Paleta principal do FinCheck
         navy: {
           50:  '#f0f4fa',
           100: '#dce6f5',
@@ -13,7 +12,7 @@ export default {
           400: '#5a87be',
           500: '#3a67a5',
           600: '#2c508a',
-          700: '#1e3a5f',  // Cor primária
+          700: '#1e3a5f',
           800: '#172d4a',
           900: '#101f34',
         },
@@ -23,8 +22,9 @@ export default {
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'fade-in': 'fadeIn 0.4s ease-out',
-        'slide-up': 'slideUp 0.4s ease-out',
+        'fade-in': 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        'spin-slow': 'spin 2s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -32,9 +32,17 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      },
+      boxShadow: {
+        'glow-navy': '0 0 30px rgba(58, 103, 165, 0.3)',
+        'glow-green': '0 0 20px rgba(22, 163, 74, 0.3)',
+        'card': '0 4px 6px -1px rgba(0,0,0,0.2), 0 10px 40px -10px rgba(0,0,0,0.25)',
       },
     },
   },

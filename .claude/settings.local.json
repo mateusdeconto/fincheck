@@ -18,7 +18,13 @@
       "Bash(echo exit:$?)",
       "mcp__aefd6774-3826-44b9-9e16-2f8b622ce9bb__gmail_create_draft",
       "Bash(gh repo:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(git -C \"C:/Users/mateu/Desktop/mvp cont\" status)",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\"\" && git status && git add -A && git commit -m \"\"feat: itemized expenses, investments question, PDF/Excel export, premium UI\"\" && git push origin main\")",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\"\" && git log --oneline -3 2>&1\")",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont''; git log --oneline -3\")",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\"\" && git status 2>&1\")",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\mateu\\\\Desktop\\\\mvp cont\"\" && git status > C:\\\\Users\\\\mateu\\\\AppData\\\\Local\\\\Temp\\\\git_out.txt 2>&1\")"
     ]
   }
 }
