@@ -16,9 +16,18 @@ export default {
           800: '#172d4a',
           900: '#101f34',
         },
+        // Gold accent — recomendação skill ui-ux-pro-max: Banking/Traditional Finance
+        gold: {
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#d97706',
+          600: '#a16207',
+          700: '#854d0e',
+        },
       },
+      // Plus Jakarta Sans — Friendly SaaS/Fintech (skill typography row 13)
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -41,7 +50,7 @@ export default {
       },
       boxShadow: {
         'glow-navy': '0 0 30px rgba(58, 103, 165, 0.3)',
-        'glow-green': '0 0 20px rgba(22, 163, 74, 0.3)',
+        'glow-gold': '0 0 20px rgba(161, 98, 7, 0.3)',
         'card': '0 4px 6px -1px rgba(0,0,0,0.2), 0 10px 40px -10px rgba(0,0,0,0.25)',
       },
     },

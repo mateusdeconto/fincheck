@@ -241,12 +241,12 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         {/* Métricas auxiliares */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div className="metric-card">
-            <p className="text-white/40 text-xs mb-1">Lucro Bruto</p>
+            <p className="text-amber-400/70 text-xs mb-1">Lucro Bruto</p>
             <p className="text-white font-bold text-sm">{formatBRL(metrics.grossProfit)}</p>
-            <p className="text-white/40 text-xs">{metrics.grossMargin.toFixed(1)}%</p>
+            <p className="text-amber-400/50 text-xs">{metrics.grossMargin.toFixed(1)}%</p>
           </div>
           <div className="metric-card">
-            <p className="text-white/40 text-xs mb-1">EBITDA</p>
+            <p className="text-amber-400/70 text-xs mb-1">EBITDA</p>
             <p className="text-white font-bold text-sm">{formatBRL(metrics.ebitda)}</p>
             <p className="text-white/40 text-xs">
               {financialData.revenue > 0 ? ((metrics.ebitda / financialData.revenue) * 100).toFixed(1) : 0}%

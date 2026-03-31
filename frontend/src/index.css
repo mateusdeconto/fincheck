@@ -202,8 +202,9 @@
 /* ===== CARD DO LUCRO LÍQUIDO ===== */
 .net-profit-card {
   @apply rounded-2xl p-5;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2c508a 100%);
-  box-shadow: 0 4px 20px rgba(30, 58, 95, 0.4);
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  border: 1px solid rgba(161, 98, 7, 0.25);
 }
 
 /* ===== PRINT / PDF ===== */
