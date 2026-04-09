@@ -39,7 +39,8 @@ export default function Loading({ businessData, financialData, onComplete, onErr
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-        const response = await fetch('/api/diagnose', {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${API_URL}/api/diagnose`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

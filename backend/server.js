@@ -15,10 +15,20 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === 'production';
 
-// CORS só necessário em dev (em prod o backend serve o frontend diretamente)
-if (!isProd) {
-  app.use(cors({ origin: 'http://localhost:5173' }));
-}
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 
 app.use(express.json());
 
@@ -33,16 +43,6 @@ app.use('/api/chat', chatRouter);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
-
-// Em produção: serve o frontend buildado
-if (isProd) {
-  const distPath = join(__dirname, '..', 'frontend', 'dist');
-  app.use(express.static(distPath));
-  // SPA fallback — qualquer rota que não seja /api retorna o index.html
-  app.get('*', (req, res) => {
-    res.sendFile(join(distPath, 'index.html'));
-  });
-}
 
 app.listen(PORT, () => {
   console.log(`✅ FinCheck rodando em http://localhost:${PORT} [${isProd ? 'prod' : 'dev'}]`);
