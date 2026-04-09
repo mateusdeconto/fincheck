@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Landing from './components/Landing.jsx';
 import Onboarding from './components/Onboarding.jsx';
 import Questionnaire from './components/Questionnaire.jsx';
 import Loading from './components/Loading.jsx';
@@ -7,12 +8,13 @@ import Chat from './components/Chat.jsx';
 import MonthlyTracking from './components/MonthlyTracking.jsx';
 
 const STEPS = {
-  ONBOARDING:  'onboarding',
+  LANDING:      'landing',
+  ONBOARDING:   'onboarding',
   QUESTIONNAIRE: 'questionnaire',
-  LOADING:     'loading',
-  DIAGNOSIS:   'diagnosis',
-  CHAT:        'chat',
-  TRACKING:    'tracking',
+  LOADING:      'loading',
+  DIAGNOSIS:    'diagnosis',
+  CHAT:         'chat',
+  TRACKING:     'tracking',
 };
 
 const INITIAL_FINANCIAL = {
@@ -29,7 +31,7 @@ const INITIAL_FINANCIAL = {
 };
 
 export default function App() {
-  const [step, setStep]                 = useState(STEPS.ONBOARDING);
+  const [step, setStep]                 = useState(STEPS.LANDING);
   const [businessData, setBusinessData] = useState({ businessName: '', segment: '' });
   const [financialData, setFinancialData] = useState(INITIAL_FINANCIAL);
   const [diagnosis, setDiagnosis]       = useState('');
@@ -51,7 +53,7 @@ export default function App() {
   }
 
   function handleRestart() {
-    setStep(STEPS.ONBOARDING);
+    setStep(STEPS.LANDING);
     setBusinessData({ businessName: '', segment: '' });
     setFinancialData(INITIAL_FINANCIAL);
     setDiagnosis('');
@@ -67,8 +69,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div className={step === STEPS.LANDING ? '' : 'min-h-screen flex items-center justify-center p-4'}>
+      {step === STEPS.LANDING && (
+        <Landing onEnter={() => setStep(STEPS.ONBOARDING)} />
+      )}
+
+      <div className={step === STEPS.LANDING ? 'hidden' : 'w-full max-w-lg'}>
         {step === STEPS.ONBOARDING && (
           <Onboarding onComplete={handleOnboardingComplete} />
         )}
@@ -122,3 +128,4 @@ export default function App() {
     </div>
   );
 }
+

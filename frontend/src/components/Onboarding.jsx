@@ -1,8 +1,6 @@
 import { useState } from 'react';
 
 // Médias setoriais para PMEs brasileiras (fontes: SEBRAE, Deloitte SME, dados setoriais IBGE/FGV)
-// Fontes: SEBRAE (restaurante/CMV), StartupHero/dados públicos empresas brasileiras (demais setores)
-// Ajustados para refletir PMEs, não grandes empresas de capital aberto
 export const SECTOR_BENCHMARKS = {
   restaurante: {
     grossMargin: [55, 70], netMargin: [3, 9], cmvPct: [30, 40],
@@ -56,7 +54,6 @@ export const SECTOR_BENCHMARKS = {
   },
 };
 
-// SVG icons por segmento
 function IconRestaurant({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -130,38 +127,39 @@ function IconOther({ className }) {
 }
 
 const SEGMENTS = [
-  { value: 'restaurante', label: 'Alimentação', desc: 'Restaurante, bar, café, delivery', Icon: IconRestaurant },
-  { value: 'varejo',      label: 'Varejo',       desc: 'Loja física, e-commerce, mercado', Icon: IconRetail },
-  { value: 'servicos',    label: 'Serviços',     desc: 'Consultoria, manutenção, B2B/B2C', Icon: IconServices },
-  { value: 'saude',       label: 'Saúde',        desc: 'Clínica, consultório, academia', Icon: IconHealth },
-  { value: 'beleza',      label: 'Beleza',       desc: 'Salão, barbearia, estética', Icon: IconBeauty },
-  { value: 'tecnologia',  label: 'Tecnologia',   desc: 'Software, agência digital, apps', Icon: IconTech },
-  { value: 'construcao',  label: 'Construção',   desc: 'Construtora, reformas, empreiteira', Icon: IconConstruction },
-  { value: 'educacao',    label: 'Educação',     desc: 'Escola, cursos, treinamentos', Icon: IconEducation },
-  { value: 'industria',   label: 'Indústria',    desc: 'Fabricação, manufatura, confecção', Icon: IconIndustry },
-  { value: 'outro',       label: 'Outro',        desc: 'Meu negócio não está na lista', Icon: IconOther },
+  { value: 'restaurante', label: 'Alimentação', desc: 'Restaurante, bar, café', Icon: IconRestaurant },
+  { value: 'varejo',      label: 'Varejo',       desc: 'Loja, e-commerce',       Icon: IconRetail },
+  { value: 'servicos',    label: 'Serviços',     desc: 'Consultoria, B2B/B2C',   Icon: IconServices },
+  { value: 'saude',       label: 'Saúde',        desc: 'Clínica, consultório',   Icon: IconHealth },
+  { value: 'beleza',      label: 'Beleza',       desc: 'Salão, estética',        Icon: IconBeauty },
+  { value: 'tecnologia',  label: 'Tecnologia',   desc: 'Software, agência',      Icon: IconTech },
+  { value: 'construcao',  label: 'Construção',   desc: 'Obras, reformas',        Icon: IconConstruction },
+  { value: 'educacao',    label: 'Educação',     desc: 'Escola, cursos',         Icon: IconEducation },
+  { value: 'industria',   label: 'Indústria',    desc: 'Fabricação, manufatura', Icon: IconIndustry },
+  { value: 'outro',       label: 'Outro',        desc: 'Não está na lista',      Icon: IconOther },
 ];
 
-// Paleta de ícones por segmento (tom claro sobre fundo branco)
+// Cores dos ícones adaptadas para fundo escuro
 const ICON_COLORS = {
-  restaurante: { bg: '#fff7ed', color: '#ea580c' },
-  varejo:      { bg: '#eff6ff', color: '#2563eb' },
-  servicos:    { bg: '#eef2ff', color: '#4f46e5' },
-  saude:       { bg: '#fff1f2', color: '#e11d48' },
-  beleza:      { bg: '#fdf4ff', color: '#a21caf' },
-  tecnologia:  { bg: '#f5f3ff', color: '#7c3aed' },
-  construcao:  { bg: '#fffbeb', color: '#d97706' },
-  educacao:    { bg: '#f0fdf4', color: '#16a34a' },
-  industria:   { bg: '#f8fafc', color: '#475569' },
-  outro:       { bg: '#f9fafb', color: '#6b7280' },
+  restaurante: { bg: 'rgba(234,88,12,0.25)',  color: '#fdba74' },
+  varejo:      { bg: 'rgba(37,99,235,0.25)',  color: '#93c5fd' },
+  servicos:    { bg: 'rgba(79,70,229,0.25)',  color: '#a5b4fc' },
+  saude:       { bg: 'rgba(225,29,72,0.25)',  color: '#fda4af' },
+  beleza:      { bg: 'rgba(162,28,175,0.25)', color: '#f0abfc' },
+  tecnologia:  { bg: 'rgba(124,58,237,0.25)', color: '#c4b5fd' },
+  construcao:  { bg: 'rgba(217,119,6,0.25)',  color: '#fcd34d' },
+  educacao:    { bg: 'rgba(22,163,74,0.25)',  color: '#86efac' },
+  industria:   { bg: 'rgba(71,85,105,0.25)',  color: '#cbd5e1' },
+  outro:       { bg: 'rgba(107,114,128,0.25)',color: '#d1d5db' },
 };
 
-function BenchmarkChip({ label, value }) {
+function MetricPill({ label, value }) {
   return (
     <div className="flex flex-col items-center rounded-xl py-2.5 px-2"
-         style={{ background: 'rgba(30,58,95,0.06)', border: '1px solid rgba(30,58,95,0.1)' }}>
-      <span className="text-[10px] font-semibold text-navy-600 uppercase tracking-wide leading-tight text-center mb-1">{label}</span>
-      <span className="text-sm font-bold text-navy-800">{value}</span>
+         style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <span className="text-[10px] font-semibold uppercase tracking-wide leading-tight text-center mb-1"
+            style={{ color: 'rgba(148,163,184,0.9)' }}>{label}</span>
+      <span className="text-sm font-bold text-white">{value}</span>
     </div>
   );
 }
@@ -181,181 +179,239 @@ export default function Onboarding({ onComplete }) {
   const bench = segment ? SECTOR_BENCHMARKS[segment] : null;
 
   return (
-    <div className="animate-slide-up space-y-5">
+    <div className="relative animate-slide-up">
 
-      {/* ── HERO ── */}
-      <div className="text-center">
-        {/* Logo */}
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-             style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}>
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-          </svg>
-        </div>
+      {/* Dot grid pattern */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+          zIndex: 0,
+        }}
+      />
 
-        <h1 className="text-3xl font-black text-white mb-2 tracking-tight">FinCheck</h1>
-        <p className="text-white/55 text-sm leading-relaxed max-w-xs mx-auto mb-5">
-          Descubra a saúde financeira do seu negócio em menos de 5 minutos
-        </p>
+      {/* Glow orbs */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full pointer-events-none"
+           style={{ background: 'radial-gradient(circle, rgba(58,103,165,0.25) 0%, transparent 70%)', zIndex: 0 }} />
+      <div className="fixed bottom-0 right-0 w-64 h-64 rounded-full pointer-events-none"
+           style={{ background: 'radial-gradient(circle, rgba(161,98,7,0.12) 0%, transparent 70%)', zIndex: 0 }} />
 
-        {/* Feature pills */}
-        <div className="flex items-center justify-center gap-2 flex-wrap">
-          {[
-            { icon: '⚡', text: '5 minutos' },
-            { icon: '🔒', text: 'Privado' },
-            { icon: '✓', text: 'Gratuito' },
-          ].map(f => (
-            <span key={f.text}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>
-              <span>{f.icon}</span>
-              {f.text}
+      <div className="relative z-10 space-y-6 pb-2">
+
+        {/* ── HERO ── */}
+        <div className="text-center pt-2">
+
+          {/* Animated badge */}
+          <div className="inline-flex items-center gap-2 mb-5 badge-gradient-border">
+            <svg className="w-3.5 h-3.5 text-gold-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
+              Diagnóstico gratuito · Menos de 5 minutos
             </span>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* ── CARD ── */}
-      <div className="card p-6">
+          {/* Logo icon */}
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
+               style={{ background: 'rgba(58,103,165,0.2)', border: '1px solid rgba(58,103,165,0.35)', backdropFilter: 'blur(8px)' }}>
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
+                 style={{ color: '#60a5fa' }}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+            </svg>
+          </div>
 
-        {/* Card header */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-1">Sobre o seu negócio</h2>
-          <p className="text-slate-400 text-sm">Essas informações personalizam o diagnóstico</p>
-        </div>
+          {/* Headline with gradient */}
+          <h1 className="font-black tracking-tight mb-3 leading-[1.1]"
+              style={{ fontSize: 'clamp(1.75rem, 6vw, 2.4rem)' }}>
+            <span className="headline-gradient">Descubra a saúde</span>
+            <br />
+            <span className="text-white">financeira do seu negócio</span>
+          </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+          <p className="text-sm leading-relaxed mx-auto mb-5"
+             style={{ color: 'rgba(148,163,184,0.85)', maxWidth: '22rem' }}>
+            Responda 7 perguntas simples e receba um diagnóstico completo com alertas e recomendações.
+          </p>
 
-          {/* Nome do negócio */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Nome do negócio
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+          {/* Feature pills */}
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {[
+              { label: 'Privado', icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
-              </div>
-              <input
-                type="text"
-                value={businessName}
-                onChange={e => setBusinessName(e.target.value)}
-                placeholder="Ex: Padaria do João, Oficina Silva..."
-                className="w-full pl-10 pr-4 py-3.5 rounded-xl border-2 border-slate-200
-                           focus:border-navy-500 focus:bg-navy-50/20
-                           outline-none transition-all text-slate-800 placeholder:text-slate-300 text-sm font-medium"
-                autoComplete="organization"
-                maxLength={60}
-              />
-            </div>
+              )},
+              { label: 'Gratuito', icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              )},
+              { label: 'Sem cadastro', icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              )},
+            ].map(f => (
+              <span key={f.label}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(148,163,184,0.9)' }}>
+                {f.icon}
+                {f.label}
+              </span>
+            ))}
           </div>
+        </div>
 
-          {/* Segmento */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-              Segmento da empresa
-            </label>
+        {/* ── FORM SECTION ── */}
+        <div className="space-y-5">
 
-            {/* Grid 2 colunas */}
-            <div className="grid grid-cols-2 gap-2">
-              {SEGMENTS.map(seg => {
-                const ic = ICON_COLORS[seg.value];
-                const isSelected = segment === seg.value;
-                return (
-                  <button
-                    key={seg.value}
-                    type="button"
-                    onClick={() => setSegment(seg.value)}
-                    className={`relative text-left rounded-xl border-2 p-3 transition-all duration-150
-                      ${isSelected
-                        ? 'border-navy-500 bg-navy-50 shadow-sm'
-                        : 'border-slate-200 hover:border-navy-300 hover:bg-slate-50'
-                      }`}
-                  >
-                    {/* Checkmark */}
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-navy-500 flex items-center justify-center">
-                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-
-                    {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
-                         style={{ background: ic.bg }}>
-                      <seg.Icon className="w-4 h-4" style={{ color: ic.color }} />
-                    </div>
-
-                    <div className={`text-sm font-semibold mb-0.5 leading-tight ${isSelected ? 'text-navy-700' : 'text-slate-700'}`}>
-                      {seg.label}
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-tight">
-                      {seg.desc}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ── Benchmark card animado ── */}
-            {bench && selectedSeg && (
-              <div className="mt-4 rounded-2xl p-4 animate-fade-in"
-                   style={{ background: 'rgba(30,58,95,0.05)', border: '1px solid rgba(30,58,95,0.12)' }}>
-
-                {/* Header benchmark */}
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="text-xs font-bold text-navy-700 uppercase tracking-wider">
-                      Média setorial — {selectedSeg.label}
-                    </span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Referência para PMEs brasileiras</p>
-                  </div>
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg"
-                       style={{ background: 'rgba(30,58,95,0.08)' }}>
-                    <svg className="w-3 h-3 text-navy-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                    </svg>
-                    <span className="text-[10px] font-bold text-navy-600">Estimativa</span>
-                  </div>
-                </div>
-
-                {/* 3 métricas */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  <BenchmarkChip label="Margem Bruta" value={`${bench.grossMargin[0]}–${bench.grossMargin[1]}%`} />
-                  <BenchmarkChip label="Margem Líquida" value={`${bench.netMargin[0]}–${bench.netMargin[1]}%`} />
-                  <BenchmarkChip label="CMV / Receita" value={`${bench.cmvPct[0]}–${bench.cmvPct[1]}%`} />
-                </div>
-
-                {/* Dica do setor */}
-                <div className="flex items-start gap-2 pt-2 border-t border-navy-100">
-                  <svg className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-                  </svg>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">{bench.tip}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* CTA */}
-          <button type="submit" disabled={!canProceed} className="btn-primary">
-            <span className="flex items-center justify-center gap-2">
-              Iniciar diagnóstico
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-              </svg>
+          {/* Section label */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.5)' }}>
+              Sobre o negócio
             </span>
-          </button>
-        </form>
-      </div>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          </div>
 
-      {/* Footer */}
-      <p className="text-center text-white/25 text-xs">
-        Seus dados ficam apenas no seu dispositivo · Nenhuma conta necessária
-      </p>
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* ── Nome do negócio ── */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2"
+                     style={{ color: 'rgba(226,232,240,0.9)' }}>
+                Nome do negócio
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
+                       style={{ color: 'rgba(148,163,184,0.5)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={businessName}
+                  onChange={e => setBusinessName(e.target.value)}
+                  placeholder="Ex: Padaria do João, Oficina Silva..."
+                  className="dark-input w-full pl-10 pr-4 py-3.5 rounded-xl text-sm font-medium"
+                  autoComplete="organization"
+                  maxLength={60}
+                />
+              </div>
+            </div>
+
+            {/* ── Segmento ── */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-3"
+                     style={{ color: 'rgba(148,163,184,0.7)' }}>
+                Segmento da empresa
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                {SEGMENTS.map(seg => {
+                  const ic = ICON_COLORS[seg.value];
+                  const isSelected = segment === seg.value;
+                  return (
+                    <button
+                      key={seg.value}
+                      type="button"
+                      onClick={() => setSegment(seg.value)}
+                      className={`relative text-left rounded-xl p-3 transition-all duration-150 ${
+                        isSelected ? 'segment-selected' : 'segment-idle'
+                      }`}
+                    >
+                      {/* Checkmark */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
+                             style={{ background: '#3a67a5' }}>
+                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+
+                      {/* Icon */}
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2"
+                           style={{ background: ic.bg }}>
+                        <seg.Icon className="w-5 h-5" style={{ color: ic.color }} />
+                      </div>
+
+                      <div className={`text-sm font-semibold mb-0.5 leading-tight ${isSelected ? 'text-white' : 'text-slate-100'}`}>
+                        {seg.label}
+                      </div>
+                      <div className="text-[11px] leading-tight" style={{ color: 'rgba(203,213,225,0.75)' }}>
+                        {seg.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ── Benchmark card ── */}
+              {bench && selectedSeg && (
+                <div className="mt-4 rounded-2xl p-4 animate-fade-in"
+                     style={{ background: 'rgba(58,103,165,0.12)', border: '1px solid rgba(58,103,165,0.25)' }}>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#60a5fa' }}>
+                        Média setorial — {selectedSeg.label}
+                      </span>
+                      <p className="text-[11px] mt-0.5" style={{ color: 'rgba(148,163,184,0.6)' }}>
+                        Referência para PMEs brasileiras
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg"
+                         style={{ background: 'rgba(58,103,165,0.2)' }}>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                           style={{ color: '#60a5fa' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                      </svg>
+                      <span className="text-[10px] font-bold" style={{ color: '#60a5fa' }}>Estimativa</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <MetricPill label="Margem Bruta" value={`${bench.grossMargin[0]}–${bench.grossMargin[1]}%`} />
+                    <MetricPill label="Margem Líquida" value={`${bench.netMargin[0]}–${bench.netMargin[1]}%`} />
+                    <MetricPill label="CMV / Rec." value={`${bench.cmvPct[0]}–${bench.cmvPct[1]}%`} />
+                  </div>
+
+                  <div className="flex items-start gap-2 pt-2.5"
+                       style={{ borderTop: '1px solid rgba(58,103,165,0.2)' }}>
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"
+                         style={{ color: '#fbbf24' }}>
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(148,163,184,0.7)' }}>
+                      {bench.tip}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── CTA ── */}
+            <button type="submit" disabled={!canProceed} className="btn-cta-primary">
+              <span className="flex items-center justify-center gap-2">
+                Iniciar diagnóstico
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </span>
+            </button>
+
+          </form>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs pb-2" style={{ color: 'rgba(148,163,184,0.3)' }}>
+          Seus dados ficam apenas no seu dispositivo · Nenhuma conta necessária
+        </p>
+      </div>
     </div>
   );
 }
