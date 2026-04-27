@@ -47,10 +47,17 @@ function saveSession(state) {
 function FullScreenSpinner() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-12 h-12 rounded-full border-4 border-ink-100 border-t-accent-500 animate-spin" />
+      <div className="w-12 h-12 rounded-full border-4 border-ink-100 border-t-ink-800 animate-spin" />
     </div>
   );
 }
+
+// Largura por etapa — Questionnaire precisa de mais espaço pro painel lateral.
+const WIDTH_BY_STEP = {
+  questionnaire: 'w-full max-w-5xl',
+  diagnosis:     'w-full max-w-2xl',
+  default:       'w-full max-w-lg',
+};
 
 export default function App() {
   // Restaura sessão (autosave) se houver
@@ -107,7 +114,7 @@ export default function App() {
         <Landing onEnter={() => setStep(STEPS.ONBOARDING)} />
       )}
 
-      <div className={step === STEPS.LANDING ? 'hidden' : 'w-full max-w-lg'}>
+      <div className={step === STEPS.LANDING ? 'hidden' : (WIDTH_BY_STEP[step] || WIDTH_BY_STEP.default)}>
         <Suspense fallback={<FullScreenSpinner />}>
           {step === STEPS.ONBOARDING && (
             <Onboarding onComplete={handleOnboardingComplete} onBack={() => setStep(STEPS.LANDING)} />
@@ -118,6 +125,7 @@ export default function App() {
               onComplete={handleQuestionnaireComplete}
               onBack={() => setStep(STEPS.ONBOARDING)}
               initialValues={initialValues}
+              businessData={businessData}
             />
           )}
 

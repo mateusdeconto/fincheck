@@ -198,11 +198,45 @@
   content: '▋'; animation: blink 1s step-end infinite; color: #2c5deb;
 }
 
+/* ============================================================
+   SCROLL REVEAL — usado pelo componente <Reveal>
+   ============================================================ */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Variante mais sutil para itens de lista */
+.reveal-soft {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.reveal-soft.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Contagem progressiva de números — efeito decorativo */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+  .reveal { opacity: 1; transform: none; }
 }
 
 /* ============================================================
