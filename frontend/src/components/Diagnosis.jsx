@@ -235,88 +235,75 @@ async function downloadDRE(businessData, financialData) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ─── PDF via iframe oculto (não dispara popup blocker) ─────────────────────
-function downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics) {
+// ─── PDF gerado direto no client (sem print dialog) ────────────────────────
+async function downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics) {
+  const html2pdf = (await import('html2pdf.js')).default;
   const now = new Date().toLocaleDateString('pt-BR');
 
   const badgeHtml = healthStatus
     ? `<div class="badge">${healthStatus.dot} Saúde Financeira: ${healthStatus.label}</div>`
     : '';
 
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diagnóstico Financeiro — ${businessData.businessName}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 48px; color: #2a2620; background: white; }
-  .header { border-bottom: 2px solid #d6612a; padding-bottom: 18px; margin-bottom: 22px; }
-  .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #d6612a; margin-bottom: 6px; }
-  h1 { font-size: 26px; font-weight: 800; color: #1a1814; margin-bottom: 4px; }
-  .meta { font-size: 13px; color: #5b5547; }
-  .badge { display: inline-block; margin-top: 10px; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #fdf3ec; color: #8d3a1a; border: 1px solid #fae0d0; }
-  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 24px; }
-  .summary-card { background: #f8f6f1; border: 1px solid #e3ddd0; border-radius: 8px; padding: 12px; }
-  .summary-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8273; font-weight: 600; }
-  .summary-card .value { font-size: 16px; font-weight: 800; color: #1a1814; margin-top: 4px; }
-  h2 { font-size: 14px; font-weight: 700; color: #d6612a; margin: 22px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e3ddd0; }
-  p { font-size: 13px; line-height: 1.65; color: #3f3a30; margin-bottom: 9px; }
-  ul { margin: 0 0 12px 0; padding: 0; list-style: none; }
-  li { font-size: 13px; line-height: 1.65; color: #3f3a30; padding: 3px 0 3px 14px; position: relative; }
-  li::before { content: '•'; position: absolute; left: 0; color: #d6612a; font-weight: 700; }
-  strong { font-weight: 700; color: #1a1814; }
-  .footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e3ddd0; font-size: 11px; color: #8a8273; text-align: center; }
-  @media print { body { padding: 24px 32px; } @page { margin: 1cm; } }
-</style>
-</head>
-<body>
-  <div class="header">
-    <div class="logo">FinCheck — Diagnóstico Financeiro</div>
-    <h1>${escapeHtml(businessData.businessName)}</h1>
-    <div class="meta">${escapeHtml(businessData.segment)} &nbsp;·&nbsp; Gerado em ${now}</div>
-    ${badgeHtml}
-  </div>
-  ${metrics ? `
-  <div class="summary">
-    <div class="summary-card"><div class="label">Lucro Líquido</div><div class="value">${formatBRL(metrics.netProfit)}</div></div>
-    <div class="summary-card"><div class="label">Margem Líquida</div><div class="value">${metrics.netMargin.toFixed(1)}%</div></div>
-    <div class="summary-card"><div class="label">Saldo em Caixa</div><div class="value">${formatBRL(metrics.cashBalance)}</div></div>
-  </div>` : ''}
-  <div class="content">${renderedHtml}</div>
-  <div class="footer">Gerado pelo FinCheck — diagnóstico financeiro para pequenas empresas brasileiras</div>
-</body>
-</html>`;
+  // Container offscreen — html2pdf renderiza esse elemento
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:white;';
+  container.innerHTML = `
+    <style>
+      .fc-pdf { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 48px; color: #2a2620; background: white; }
+      .fc-pdf * { box-sizing: border-box; }
+      .fc-pdf .header { border-bottom: 2px solid #d6612a; padding-bottom: 18px; margin-bottom: 22px; }
+      .fc-pdf .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #d6612a; margin-bottom: 6px; }
+      .fc-pdf h1 { font-size: 28px; font-weight: 800; color: #1a1814; margin: 0 0 4px; }
+      .fc-pdf .meta { font-size: 13px; color: #5b5547; }
+      .fc-pdf .badge { display: inline-block; margin-top: 10px; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #fdf3ec; color: #8d3a1a; border: 1px solid #fae0d0; }
+      .fc-pdf .summary { display: flex; gap: 12px; margin: 18px 0 24px; }
+      .fc-pdf .summary-card { flex: 1; background: #f8f6f1; border: 1px solid #e3ddd0; border-radius: 8px; padding: 12px; }
+      .fc-pdf .summary-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8273; font-weight: 600; }
+      .fc-pdf .summary-card .value { font-size: 18px; font-weight: 800; color: #1a1814; margin-top: 4px; }
+      .fc-pdf h2 { font-size: 15px; font-weight: 700; color: #d6612a; margin: 22px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e3ddd0; }
+      .fc-pdf p { font-size: 13px; line-height: 1.65; color: #3f3a30; margin: 0 0 9px; }
+      .fc-pdf ul { margin: 0 0 12px; padding: 0; list-style: none; }
+      .fc-pdf li { font-size: 13px; line-height: 1.65; color: #3f3a30; padding: 3px 0 3px 14px; position: relative; }
+      .fc-pdf li::before { content: '•'; position: absolute; left: 0; color: #d6612a; font-weight: 700; }
+      .fc-pdf strong { font-weight: 700; color: #1a1814; }
+      .fc-pdf .footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e3ddd0; font-size: 11px; color: #8a8273; text-align: center; }
+    </style>
+    <div class="fc-pdf">
+      <div class="header">
+        <div class="logo">FinCheck — Diagnóstico Financeiro</div>
+        <h1>${escapeHtml(businessData.businessName)}</h1>
+        <div class="meta">${escapeHtml(businessData.segment)} &nbsp;·&nbsp; Gerado em ${now}</div>
+        ${badgeHtml}
+      </div>
+      ${metrics ? `
+      <div class="summary">
+        <div class="summary-card"><div class="label">Lucro Líquido</div><div class="value">${formatBRL(metrics.netProfit)}</div></div>
+        <div class="summary-card"><div class="label">Margem Líquida</div><div class="value">${metrics.netMargin.toFixed(1)}%</div></div>
+        <div class="summary-card"><div class="label">Saldo em Caixa</div><div class="value">${formatBRL(metrics.cashBalance)}</div></div>
+      </div>` : ''}
+      <div class="content">${renderedHtml}</div>
+      <div class="footer">Gerado pelo FinCheck — diagnóstico financeiro para pequenas empresas brasileiras</div>
+    </div>
+  `;
+  document.body.appendChild(container);
 
-  // iframe oculto evita popup blocker
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
+  const fileName = `Diagnostico_${businessData.businessName.replace(/\s+/g, '_')}_${now.replace(/\//g, '-')}.pdf`;
 
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  // espera carregar e dispara print
-  iframe.onload = () => {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error('Print error:', e);
-      }
-      // remove o iframe depois que o usuário fechou o diálogo
-      setTimeout(() => document.body.removeChild(iframe), 1000);
-    }, 250);
-  };
+  try {
+    await html2pdf()
+      .set({
+        margin:       [10, 10, 10, 10],
+        filename:     fileName,
+        image:        { type: 'jpeg', quality: 0.95 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
+      })
+      .from(container.querySelector('.fc-pdf'))
+      .save();
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 export default function Diagnosis({ businessData, financialData, diagnosis, onOpenChat, onOpenTracking, onRestart }) {
@@ -325,6 +312,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
   const metrics       = useMemo(() => calcMetrics(financialData),     [financialData]);
   const projection    = useMemo(() => calcProjection(financialData, metrics), [financialData, metrics]);
   const [exporting, setExporting] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const netProfitPositive = metrics.netProfit >= 0;
 
@@ -333,6 +321,13 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
     try { await downloadDRE(businessData, financialData); }
     catch (e) { console.error(e); alert('Erro ao gerar Excel. Tente novamente.'); }
     finally { setExporting(false); }
+  }
+
+  async function handlePDF() {
+    setPdfExporting(true);
+    try { await downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics); }
+    catch (e) { console.error(e); alert('Erro ao gerar PDF. Tente novamente.'); }
+    finally { setPdfExporting(false); }
   }
 
   const statusMap = {
@@ -484,15 +479,12 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
           Exportar relatório
         </p>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics)}
-            className="btn-pdf"
-          >
+          <button onClick={handlePDF} disabled={pdfExporting} className="btn-pdf disabled:opacity-50">
             <span className="flex items-center justify-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
-              Baixar PDF
+              {pdfExporting ? 'Gerando…' : 'Baixar PDF'}
             </span>
           </button>
           <button onClick={handleExcel} disabled={exporting} className="btn-excel disabled:opacity-50">
