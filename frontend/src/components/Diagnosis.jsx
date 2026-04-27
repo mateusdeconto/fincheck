@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import * as XLSX from 'xlsx';
+import { useMemo, useState } from 'react';
+import { calcMetrics, formatBRL } from '../lib/metrics.js';
 
 function renderMarkdown(text) {
   if (!text) return '';
@@ -42,18 +42,13 @@ function escapeHtml(text) {
 
 function extractHealthStatus(text) {
   if (!text) return null;
-  if (text.includes('✅ Saudável') || text.includes('Saudável')) return { label: 'Saudável', color: 'bg-emerald-100 text-emerald-700 border border-emerald-200', dot: '✅' };
-  if (text.includes('🟢 Estável') || text.includes('Estável')) return { label: 'Estável', color: 'bg-teal-100 text-teal-700 border border-teal-200', dot: '🟢' };
-  if (text.includes('🟡 Atenção') || text.includes('Atenção')) return { label: 'Atenção necessária', color: 'bg-amber-100 text-amber-700 border border-amber-200', dot: '🟡' };
-  if (text.includes('🔴 Crítica') || text.includes('Crítica')) return { label: 'Situação crítica', color: 'bg-red-100 text-red-700 border border-red-200', dot: '🔴' };
+  if (text.includes('✅ Saudável') || text.includes('Saudável')) return { label: 'Saudável',            color: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: '✅' };
+  if (text.includes('🟢 Estável') || text.includes('Estável'))   return { label: 'Estável',             color: 'bg-teal-50 text-teal-700 border border-teal-200',          dot: '🟢' };
+  if (text.includes('🟡 Atenção') || text.includes('Atenção'))   return { label: 'Atenção necessária',  color: 'bg-amber-50 text-amber-700 border border-amber-200',       dot: '🟡' };
+  if (text.includes('🔴 Crítica') || text.includes('Crítica'))   return { label: 'Situação crítica',    color: 'bg-red-50 text-red-700 border border-red-200',             dot: '🔴' };
   return null;
 }
 
-function formatBRL(value) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-}
-
-// Extrai o primeiro item da seção "Pontos de Atenção"
 function extractFirstAlert(text) {
   if (!text) return null;
   const section = text.split(/##\s*⚠️\s*Pontos de Atenção/)[1];
@@ -68,7 +63,6 @@ function extractFirstAlert(text) {
   return null;
 }
 
-// Extrai a primeira recomendação da seção "Recomendações para essa semana"
 function extractFirstRecommendation(text) {
   if (!text) return null;
   const section = text.split(/##\s*🎯\s*Recomendações/)[1];
@@ -100,37 +94,28 @@ function buildWhatsAppMessage(businessData, financialData, diagnosis, metrics, h
     ``,
     ...(alert ? [`*Principal alerta:* ${alert}`, ``] : []),
     ...(rec   ? [`*Recomendação prioritária:* ${rec}`, ``] : []),
-    `Análise completa em: https://fincheck-production-27bd.up.railway.app`,
+    `Análise completa em: ${typeof window !== 'undefined' ? window.location.origin : ''}`,
   ];
 
   return lines.join('\n');
 }
 
-function calcProjection(f) {
-  const cash       = f.cashBalance    || 0;
-  const revenue    = f.revenue        || 0;
-  const fixed      = f.fixedExpenses  || 0;
-  const debt       = f.debtPayment    || 0;
+function calcProjection(f, m) {
+  const cash       = m.cashBalance;
+  const revenue    = m.revenue;
+  const fixed      = m.fixedExpenses;
+  const debt       = m.debtPayment;
 
-  // Projeção conservadora: mantém receita igual, paga custos fixos + dívidas
   const projected  = cash + revenue - fixed - debt;
   const dailyCost  = fixed / 30;
-
-  // Semáforo
-  // 🔴 negativo  |  🟡 positivo mas < 1 mês de custo fixo  |  🟢 ≥ 1 mês de custo fixo
   const status = projected < 0 ? 'red' : projected < fixed ? 'yellow' : 'green';
+  const coverageDays = dailyCost > 0 && projected > 0 ? Math.floor(projected / dailyCost) : 0;
 
-  // Dias de operação cobertos
-  const coverageDays = dailyCost > 0 && projected > 0
-    ? Math.floor(projected / dailyCost)
-    : 0;
-
-  // Frase explicativa
   let sentence;
   if (status === 'green') {
     sentence = `No ritmo atual, você vai encerrar o mês com ${formatBRL(projected)} no caixa — suficiente para cobrir aproximadamente ${coverageDays} dias de operação.`;
   } else if (status === 'yellow') {
-    sentence = `Caixa vai ficar positivo (${formatBRL(projected)}), mas abaixo de um mês de custos fixos. Qualquer imprevisto ou queda de receita pode comprometer as contas.`;
+    sentence = `Caixa vai ficar positivo (${formatBRL(projected)}), mas abaixo de um mês de custos fixos. Qualquer imprevisto pode comprometer as contas.`;
   } else {
     sentence = `Atenção: no ritmo atual, seu caixa ficará ${formatBRL(projected)} no vermelho. Será preciso cortar custos ou buscar receita extra para fechar o mês.`;
   }
@@ -138,176 +123,248 @@ function calcProjection(f) {
   return { projected, coverageDays, status, sentence, cash, revenue, fixed, debt };
 }
 
-function calcMetrics(f) {
-  const grossProfit = (f.revenue || 0) - (f.cogs || 0);
-  const grossMargin = f.revenue > 0 ? ((grossProfit / f.revenue) * 100) : 0;
-  const ebitda = grossProfit - (f.fixedExpenses || 0);
-  const netProfit = ebitda - (f.debtPayment || 0) - (f.investments || 0);
-  const netMargin = f.revenue > 0 ? ((netProfit / f.revenue) * 100) : 0;
-  return { grossProfit, grossMargin, ebitda, netProfit, netMargin };
-}
-
-function downloadDRE(businessData, financialData) {
-  const f = financialData;
-  const { grossProfit, grossMargin, ebitda, netProfit, netMargin } = calcMetrics(f);
-
-  const fmt = (n) => n;
-  const pct = (n) => `${n.toFixed(1)}%`;
+// ─── DRE em Excel ──────────────────────────────────────────────────────────
+async function downloadDRE(businessData, financialData) {
+  const ExcelJS = (await import('exceljs')).default;
+  const m = calcMetrics(financialData);
   const now = new Date().toLocaleDateString('pt-BR');
 
-  const rows = [
-    ['DEMONSTRAÇÃO DO RESULTADO DO EXERCÍCIO (DRE)', '', ''],
-    ['', '', ''],
-    ['Empresa:', businessData.businessName, ''],
-    ['Segmento:', businessData.segment, ''],
-    ['Gerado em:', now, ''],
-    ['', '', ''],
-    ['RECEITAS', '', ''],
-    ['(+) Receita Bruta', fmt(f.revenue), ''],
-    ['', '', ''],
-    ['CUSTOS', '', ''],
-    ['(-) Custo das Vendas / CMV', fmt(f.cogs), ''],
-    ['', '', ''],
-    ['= LUCRO BRUTO', fmt(grossProfit), `Margem: ${pct(grossMargin)}`],
-    ['', '', ''],
-    ['(-) DESPESAS FIXAS OPERACIONAIS', '', ''],
-    ...(f.fixedExpensesItems && f.fixedExpensesItems.length > 0
-      ? f.fixedExpensesItems.map(i => [`    • ${i.desc}`, fmt(i.value), ''])
-      : [['    (Sem detalhamento por item)', fmt(f.fixedExpenses), '']]),
-    ['  Subtotal Despesas Fixas', fmt(f.fixedExpenses), ''],
-    ['', '', ''],
-    ['= RESULTADO OPERACIONAL (EBITDA)', fmt(ebitda), `Margem: ${pct(f.revenue > 0 ? (ebitda / f.revenue) * 100 : 0)}`],
-    ['', '', ''],
-  ];
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'FinCheck';
+  wb.created = new Date();
 
-  if ((f.debtPayment || 0) > 0) {
-    rows.push(['(-) DÍVIDAS / FINANCIAMENTOS', '', '']);
-    if (f.debtPaymentItems && f.debtPaymentItems.length > 0) {
-      f.debtPaymentItems.forEach(i => rows.push([`    • ${i.desc}`, fmt(i.value), '']));
-    } else {
-      rows.push(['    (Sem detalhamento por item)', fmt(f.debtPayment), '']);
+  const ws = wb.addWorksheet('DRE', { views: [{ showGridLines: false }] });
+  ws.columns = [{ width: 50 }, { width: 22 }, { width: 22 }];
+
+  const styleTitle = {
+    font: { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2A2620' } },
+    alignment: { horizontal: 'left', vertical: 'middle', indent: 1 },
+  };
+  const styleSection = {
+    font: { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFD6612A' } },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDF3EC' } },
+  };
+  const styleTotal = {
+    font: { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF1A1814' } },
+    border: { top: { style: 'thin', color: { argb: 'FF8A8273' } } },
+  };
+  const styleMoney = { numFmt: '"R$" #,##0.00' };
+  const styleMoneyBold = { numFmt: '"R$" #,##0.00', font: { bold: true } };
+  const stylePct = { font: { italic: true, color: { argb: 'FF5B5547' } } };
+
+  function addRow([a, b, c], opts = {}) {
+    const row = ws.addRow([a, b, c]);
+    if (opts.titleStyle) {
+      row.height = 28;
+      row.eachCell((cell) => { Object.assign(cell, styleTitle); });
+      ws.mergeCells(`A${row.number}:C${row.number}`);
     }
-    rows.push(['  Subtotal Dívidas', fmt(f.debtPayment), '']);
-    rows.push(['', '', '']);
+    if (opts.section) {
+      row.eachCell((cell) => { Object.assign(cell, styleSection); });
+    }
+    if (opts.money) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoney };
+    if (opts.moneyBold) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoneyBold };
+    if (opts.pct) row.getCell(3).style = { ...row.getCell(3).style, ...stylePct };
+    if (opts.total) row.eachCell((cell) => { Object.assign(cell, styleTotal); });
+    return row;
   }
 
-  if ((f.investments || 0) > 0) {
-    rows.push(['(-) Investimentos na Empresa', fmt(f.investments), '']);
-    rows.push(['', '', '']);
+  addRow([`DRE — ${businessData.businessName}`, '', ''], { titleStyle: true });
+  ws.addRow([]);
+  addRow([`Segmento: ${businessData.segment}`, `Gerado em: ${now}`, '']);
+  ws.addRow([]);
+
+  addRow(['RECEITAS', '', ''], { section: true });
+  addRow(['(+) Receita Bruta', m.revenue, ''], { money: true });
+  ws.addRow([]);
+
+  addRow(['CUSTOS DIRETOS', '', ''], { section: true });
+  addRow(['(−) CMV — Custo das Vendas', m.cogs, ''], { money: true });
+  ws.addRow([]);
+  addRow(['= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
+  ws.addRow([]);
+
+  addRow(['DESPESAS FIXAS OPERACIONAIS', '', ''], { section: true });
+  if (financialData.fixedExpensesItems?.length) {
+    financialData.fixedExpensesItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+  } else {
+    addRow(['    (sem detalhamento)', m.fixedExpenses, ''], { money: true });
+  }
+  addRow(['  Subtotal', m.fixedExpenses, ''], { moneyBold: true });
+  ws.addRow([]);
+  addRow(['= EBITDA / Resultado Operacional', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
+  ws.addRow([]);
+
+  if (m.debtPayment > 0) {
+    addRow(['DÍVIDAS / FINANCIAMENTOS', '', ''], { section: true });
+    if (financialData.debtPaymentItems?.length) {
+      financialData.debtPaymentItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+    } else {
+      addRow(['    (sem detalhamento)', m.debtPayment, ''], { money: true });
+    }
+    addRow(['  Subtotal', m.debtPayment, ''], { moneyBold: true });
+    ws.addRow([]);
   }
 
-  rows.push(['= LUCRO LÍQUIDO (O QUE VAI PRO SEU BOLSO)', fmt(netProfit), `Margem: ${pct(netMargin)}`]);
-  rows.push(['', '', '']);
-  rows.push(['OUTROS INDICADORES', '', '']);
-  rows.push(['Saldo de Caixa Atual', fmt(f.cashBalance || 0), '']);
-  rows.push(['Contas a Receber (inadimplência)', fmt(f.accountsReceivable || 0), '']);
-  rows.push(['', '', '']);
-  rows.push(['Gerado pelo FinCheck — fincheck.app', '', '']);
+  if (m.investments > 0) {
+    addRow(['(−) Investimentos na Empresa', m.investments, ''], { money: true });
+    ws.addRow([]);
+  }
 
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
+  addRow(['= LUCRO LÍQUIDO (vai pro seu bolso)', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
+  ws.addRow([]);
 
-  ws['!cols'] = [{ wch: 50 }, { wch: 18 }, { wch: 18 }];
+  addRow(['OUTROS INDICADORES', '', ''], { section: true });
+  addRow(['Saldo de Caixa Atual', m.cashBalance, ''], { money: true });
+  addRow(['Contas a Receber', m.accountsReceivable, ''], { money: true });
+  addRow(['Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo p/ não ter prejuízo'], { money: true, pct: true });
+  ws.addRow([]);
 
-  // Style header row (bold)
-  if (!ws['A1'].s) ws['A1'].s = {};
+  ws.addRow(['Gerado pelo FinCheck']);
 
-  XLSX.utils.book_append_sheet(wb, ws, 'DRE');
-
-  const dateStr = now.replace(/\//g, '-');
-  XLSX.writeFile(wb, `DRE_${businessData.businessName.replace(/\s+/g, '_')}_${dateStr}.xlsx`);
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DRE_${businessData.businessName.replace(/\s+/g, '_')}_${now.replace(/\//g, '-')}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function downloadPDF(businessData, diagnosis, renderedHtml, healthStatus) {
+// ─── PDF via iframe oculto (não dispara popup blocker) ─────────────────────
+function downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics) {
   const now = new Date().toLocaleDateString('pt-BR');
 
   const badgeHtml = healthStatus
-    ? `<div style="margin:12px 0;"><span style="display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:100px;font-size:13px;font-weight:700;background:#f0f4fa;color:#1e3a5f;border:1px solid #dce6f5;">${healthStatus.dot} Saúde Financeira: ${healthStatus.label}</span></div>`
+    ? `<div class="badge">${healthStatus.dot} Saúde Financeira: ${healthStatus.label}</div>`
     : '';
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Diagnóstico Financeiro — ${businessData.businessName}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 48px; color: #1e293b; background: white; }
-    .header { border-bottom: 3px solid #1e3a5f; padding-bottom: 20px; margin-bottom: 24px; }
-    .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #3a67a5; margin-bottom: 8px; }
-    h1 { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
-    .meta { font-size: 13px; color: #64748b; }
-    h2 { font-size: 15px; font-weight: 700; color: #1e3a5f; margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
-    p { font-size: 13px; line-height: 1.65; color: #475569; margin-bottom: 10px; }
-    ul { margin: 0 0 12px 0; padding: 0; list-style: none; }
-    li { font-size: 13px; line-height: 1.65; color: #475569; padding: 3px 0 3px 14px; position: relative; }
-    li::before { content: '•'; position: absolute; left: 0; color: #3a67a5; }
-    strong { font-weight: 700; color: #0f172a; }
-    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
-    @media print {
-      body { padding: 24px 32px; }
-      @page { margin: 1cm; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnóstico Financeiro — ${businessData.businessName}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 48px; color: #2a2620; background: white; }
+  .header { border-bottom: 2px solid #d6612a; padding-bottom: 18px; margin-bottom: 22px; }
+  .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #d6612a; margin-bottom: 6px; }
+  h1 { font-size: 26px; font-weight: 800; color: #1a1814; margin-bottom: 4px; }
+  .meta { font-size: 13px; color: #5b5547; }
+  .badge { display: inline-block; margin-top: 10px; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; background: #fdf3ec; color: #8d3a1a; border: 1px solid #fae0d0; }
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 24px; }
+  .summary-card { background: #f8f6f1; border: 1px solid #e3ddd0; border-radius: 8px; padding: 12px; }
+  .summary-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8273; font-weight: 600; }
+  .summary-card .value { font-size: 16px; font-weight: 800; color: #1a1814; margin-top: 4px; }
+  h2 { font-size: 14px; font-weight: 700; color: #d6612a; margin: 22px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e3ddd0; }
+  p { font-size: 13px; line-height: 1.65; color: #3f3a30; margin-bottom: 9px; }
+  ul { margin: 0 0 12px 0; padding: 0; list-style: none; }
+  li { font-size: 13px; line-height: 1.65; color: #3f3a30; padding: 3px 0 3px 14px; position: relative; }
+  li::before { content: '•'; position: absolute; left: 0; color: #d6612a; font-weight: 700; }
+  strong { font-weight: 700; color: #1a1814; }
+  .footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #e3ddd0; font-size: 11px; color: #8a8273; text-align: center; }
+  @media print { body { padding: 24px 32px; } @page { margin: 1cm; } }
+</style>
 </head>
 <body>
   <div class="header">
     <div class="logo">FinCheck — Diagnóstico Financeiro</div>
-    <h1>${businessData.businessName}</h1>
-    <div class="meta">${businessData.segment} &nbsp;·&nbsp; Gerado em ${now}</div>
+    <h1>${escapeHtml(businessData.businessName)}</h1>
+    <div class="meta">${escapeHtml(businessData.segment)} &nbsp;·&nbsp; Gerado em ${now}</div>
     ${badgeHtml}
   </div>
+  ${metrics ? `
+  <div class="summary">
+    <div class="summary-card"><div class="label">Lucro Líquido</div><div class="value">${formatBRL(metrics.netProfit)}</div></div>
+    <div class="summary-card"><div class="label">Margem Líquida</div><div class="value">${metrics.netMargin.toFixed(1)}%</div></div>
+    <div class="summary-card"><div class="label">Saldo em Caixa</div><div class="value">${formatBRL(metrics.cashBalance)}</div></div>
+  </div>` : ''}
   <div class="content">${renderedHtml}</div>
   <div class="footer">Gerado pelo FinCheck — diagnóstico financeiro para pequenas empresas brasileiras</div>
-  <script>window.onload = () => { window.print(); }<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('Permita pop-ups para baixar o PDF.');
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
+  // iframe oculto evita popup blocker
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // espera carregar e dispara print
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error('Print error:', e);
+      }
+      // remove o iframe depois que o usuário fechou o diálogo
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 250);
+  };
 }
 
 export default function Diagnosis({ businessData, financialData, diagnosis, onOpenChat, onOpenTracking, onRestart }) {
-  const renderedHtml  = useMemo(() => renderMarkdown(diagnosis),        [diagnosis]);
-  const healthStatus  = useMemo(() => extractHealthStatus(diagnosis),   [diagnosis]);
-  const metrics       = useMemo(() => calcMetrics(financialData),       [financialData]);
-  const projection    = useMemo(() => calcProjection(financialData),    [financialData]);
+  const renderedHtml  = useMemo(() => renderMarkdown(diagnosis),      [diagnosis]);
+  const healthStatus  = useMemo(() => extractHealthStatus(diagnosis), [diagnosis]);
+  const metrics       = useMemo(() => calcMetrics(financialData),     [financialData]);
+  const projection    = useMemo(() => calcProjection(financialData, metrics), [financialData, metrics]);
+  const [exporting, setExporting] = useState(false);
 
   const netProfitPositive = metrics.netProfit >= 0;
+
+  async function handleExcel() {
+    setExporting(true);
+    try { await downloadDRE(businessData, financialData); }
+    catch (e) { console.error(e); alert('Erro ao gerar Excel. Tente novamente.'); }
+    finally { setExporting(false); }
+  }
+
+  const statusMap = {
+    green:  { bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500', text: 'text-emerald-700', label: 'Saldo positivo' },
+    yellow: { bg: 'bg-amber-50',   border: 'border-amber-200',   dot: 'bg-amber-400',   text: 'text-amber-700',   label: 'Atenção' },
+    red:    { bg: 'bg-red-50',     border: 'border-red-200',     dot: 'bg-red-500',     text: 'text-red-700',     label: 'Caixa negativo' },
+  };
+  const s = statusMap[projection.status];
 
   return (
     <div className="animate-slide-up space-y-4">
       {/* Header */}
       <div className="text-center mb-1">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
-             style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)' }}>
-          <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-          </svg>
-        </div>
-        <h1 className="text-2xl font-bold text-white">Diagnóstico Financeiro</h1>
-        <p className="text-white/50 text-sm mt-1">{businessData.businessName}</p>
+        <p className="eyebrow mb-2">Diagnóstico financeiro</p>
+        <h1 className="font-display text-3xl font-semibold text-ink-800 tracking-tighter">
+          {businessData.businessName}
+        </h1>
+        <p className="text-ink-400 text-sm mt-1 capitalize">{businessData.segment}</p>
       </div>
 
       {/* Badge de saúde */}
       {healthStatus && (
         <div className="flex justify-center">
-          <span className={`health-tag ${healthStatus.color} shadow-sm`}>
+          <span className={`health-tag ${healthStatus.color}`}>
             {healthStatus.dot} Saúde Financeira: {healthStatus.label}
           </span>
         </div>
       )}
 
-      {/* ── Alerta: mistura financeira ── */}
+      {/* Alerta: mistura financeira */}
       {financialData.mixedAccounts && (
-        <div className="rounded-2xl p-5 border-2 border-red-400"
-             style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%)' }}>
+        <div className="rounded-2xl p-5 border border-red-200 bg-gradient-to-br from-red-50 to-amber-50">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
               <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -315,9 +372,11 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-red-700 mb-1">⚠️ Risco: Mistura financeira detectada</p>
+              <p className="text-sm font-bold text-red-700 mb-1">⚠ Risco: mistura financeira detectada</p>
               <p className="text-sm text-red-600 leading-relaxed">
-                Misturar dinheiro pessoal com o do negócio é um dos principais motivos de falência de pequenas empresas no Brasil. Você não consegue saber se o negócio dá lucro de verdade, e pode ter problemas com a Receita Federal. Abra uma conta PJ separada — a maioria dos bancos digitais oferece isso gratuitamente.
+                Misturar dinheiro pessoal com o do negócio é uma das principais causas de falência de pequenas empresas no Brasil.
+                Você não consegue saber se o negócio dá lucro de verdade, e pode ter problemas com a Receita.
+                Abra uma conta PJ separada — a maioria dos bancos digitais oferece gratuitamente.
               </p>
             </div>
           </div>
@@ -329,31 +388,30 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">
-              Lucro Líquido do Mês
+              Lucro líquido do mês
             </p>
             <p className="text-white/70 text-xs">O que vai para o seu bolso</p>
           </div>
-          <div className={`px-3 py-1.5 rounded-xl text-xs font-bold ${netProfitPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+          <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${netProfitPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
             {netProfitPositive ? '▲ Positivo' : '▼ Negativo'}
           </div>
         </div>
-        <p className={`text-3xl font-black tracking-tight ${netProfitPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+        <p className={`text-[2.25rem] font-bold tracking-tighter font-mono ${netProfitPositive ? 'text-emerald-400' : 'text-red-400'}`}>
           {formatBRL(metrics.netProfit)}
         </p>
         <p className={`text-sm mt-1 font-medium ${netProfitPositive ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
           Margem líquida: {metrics.netMargin.toFixed(1)}%
         </p>
 
-        {/* Métricas auxiliares */}
-        <div className="grid grid-cols-2 gap-2 mt-4">
+        <div className="grid grid-cols-2 gap-2 mt-5">
           <div className="metric-card">
-            <p className="text-amber-400/70 text-xs mb-1">Lucro Bruto</p>
-            <p className="text-white font-bold text-sm">{formatBRL(metrics.grossProfit)}</p>
-            <p className="text-amber-400/50 text-xs">{metrics.grossMargin.toFixed(1)}%</p>
+            <p className="text-accent-300/80 text-[11px] mb-1 uppercase tracking-wider font-semibold">Lucro Bruto</p>
+            <p className="text-white font-bold text-sm font-mono">{formatBRL(metrics.grossProfit)}</p>
+            <p className="text-accent-300/50 text-xs">{metrics.grossMargin.toFixed(1)}%</p>
           </div>
           <div className="metric-card">
-            <p className="text-amber-400/70 text-xs mb-1">EBITDA</p>
-            <p className="text-white font-bold text-sm">{formatBRL(metrics.ebitda)}</p>
+            <p className="text-accent-300/80 text-[11px] mb-1 uppercase tracking-wider font-semibold">EBITDA</p>
+            <p className="text-white font-bold text-sm font-mono">{formatBRL(metrics.ebitda)}</p>
             <p className="text-white/40 text-xs">
               {financialData.revenue > 0 ? ((metrics.ebitda / financialData.revenue) * 100).toFixed(1) : 0}%
             </p>
@@ -362,80 +420,64 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
       </div>
 
       {/* Conteúdo do diagnóstico */}
-      <div className="card p-6">
+      <div className="card p-6 sm:p-7">
         <div className="diagnosis-content" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
       </div>
 
-      {/* ── Projeção 30 dias ── */}
-      {(() => {
-        const p = projection;
-        const statusMap = {
-          green:  { bg: 'bg-emerald-50',  border: 'border-emerald-200', dot: 'bg-emerald-500', text: 'text-emerald-700',  label: 'Saldo positivo',    icon: '🟢' },
-          yellow: { bg: 'bg-amber-50',    border: 'border-amber-200',   dot: 'bg-amber-400',   text: 'text-amber-700',    label: 'Atenção',           icon: '🟡' },
-          red:    { bg: 'bg-red-50',      border: 'border-red-200',     dot: 'bg-red-500',     text: 'text-red-700',      label: 'Caixa negativo',    icon: '🔴' },
-        };
-        const s = statusMap[p.status];
-
-        return (
-          <div className="card p-6">
-            {/* Header */}
-            <div className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-navy-50 flex items-center justify-center">
-                <svg className="w-4 h-4 text-navy-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 leading-tight">Projeção dos próximos 30 dias</h3>
-                <p className="text-xs text-slate-400">Com base nos dados do mês atual</p>
-              </div>
-            </div>
-
-            {/* Semáforo + valor */}
-            <div className="flex items-center gap-4 mb-4">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${s.bg} border ${s.border}`}>
-                <div className={`w-5 h-5 rounded-full ${s.dot}`} />
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">{s.label}</p>
-                <p className={`text-2xl font-black tracking-tight ${s.text}`}>{formatBRL(p.projected)}</p>
-                <p className="text-xs text-slate-400">saldo projetado</p>
-              </div>
-            </div>
-
-            {/* Frase explicativa */}
-            <div className={`rounded-xl p-3 mb-4 ${s.bg} border ${s.border}`}>
-              <p className={`text-sm leading-relaxed ${s.text}`}>{p.sentence}</p>
-            </div>
-
-            {/* Breakdown da conta */}
-            <div className="space-y-1.5 text-xs">
-              <p className="text-slate-400 font-semibold uppercase tracking-wider mb-2">Como calculamos</p>
-              {[
-                { label: '(+) Caixa atual',      value: p.cash,     sign: '+' },
-                { label: '(+) Receita do mês',   value: p.revenue,  sign: '+' },
-                { label: '(−) Gastos fixos',      value: p.fixed,    sign: '−' },
-                { label: '(−) Dívidas/parcelas',  value: p.debt,     sign: '−' },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-500">{row.label}</span>
-                  <span className={`font-semibold tabular-nums ${row.sign === '−' ? 'text-slate-500' : 'text-slate-700'}`}>
-                    {row.sign === '−' ? '−' : '+'} {formatBRL(row.value)}
-                  </span>
-                </div>
-              ))}
-              <div className="flex justify-between items-center pt-1.5">
-                <span className="font-bold text-slate-700">= Projeção 30 dias</span>
-                <span className={`font-black tabular-nums ${s.text}`}>{formatBRL(p.projected)}</span>
-              </div>
-            </div>
+      {/* Projeção 30 dias */}
+      <div className="card p-6">
+        <div className="flex items-center gap-2.5 mb-5">
+          <div className="w-8 h-8 rounded-lg bg-accent-50 flex items-center justify-center">
+            <svg className="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
           </div>
-        );
-      })()}
+          <div>
+            <h3 className="text-sm font-bold text-ink-800 leading-tight">Projeção dos próximos 30 dias</h3>
+            <p className="text-xs text-ink-400">Com base nos dados do mês atual</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 mb-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${s.bg} border ${s.border}`}>
+            <div className={`w-5 h-5 rounded-full ${s.dot}`} />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-ink-400 uppercase tracking-wider mb-0.5">{s.label}</p>
+            <p className={`text-2xl font-bold tracking-tighter font-mono ${s.text}`}>{formatBRL(projection.projected)}</p>
+            <p className="text-xs text-ink-400">saldo projetado</p>
+          </div>
+        </div>
+
+        <div className={`rounded-xl p-3 mb-4 ${s.bg} border ${s.border}`}>
+          <p className={`text-sm leading-relaxed ${s.text}`}>{projection.sentence}</p>
+        </div>
+
+        <div className="space-y-1 text-xs">
+          <p className="text-ink-400 font-semibold uppercase tracking-wider mb-2">Como calculamos</p>
+          {[
+            { label: '(+) Caixa atual',     value: projection.cash,     sign: '+' },
+            { label: '(+) Receita do mês',  value: projection.revenue,  sign: '+' },
+            { label: '(−) Gastos fixos',    value: projection.fixed,    sign: '−' },
+            { label: '(−) Dívidas/parcelas',value: projection.debt,     sign: '−' },
+          ].map(row => (
+            <div key={row.label} className="flex justify-between items-center py-1.5 border-b border-ink-100">
+              <span className="text-ink-500">{row.label}</span>
+              <span className={`font-semibold tabular-nums font-mono ${row.sign === '−' ? 'text-ink-500' : 'text-ink-700'}`}>
+                {row.sign === '−' ? '−' : '+'} {formatBRL(row.value)}
+              </span>
+            </div>
+          ))}
+          <div className="flex justify-between items-center pt-2">
+            <span className="font-bold text-ink-700">= Projeção 30 dias</span>
+            <span className={`font-bold tabular-nums font-mono ${s.text}`}>{formatBRL(projection.projected)}</span>
+          </div>
+        </div>
+      </div>
 
       {/* Exportações */}
       <div className="export-section">
-        <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+        <p className="eyebrow-muted mb-3 flex items-center gap-2">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -443,8 +485,8 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         </p>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => downloadPDF(businessData, diagnosis, renderedHtml, healthStatus)}
-            className="btn-pdf text-sm py-3"
+            onClick={() => downloadPDF(businessData, diagnosis, renderedHtml, healthStatus, metrics)}
+            className="btn-pdf"
           >
             <span className="flex items-center justify-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -453,15 +495,12 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
               Baixar PDF
             </span>
           </button>
-          <button
-            onClick={() => downloadDRE(businessData, financialData)}
-            className="btn-excel text-sm py-3"
-          >
+          <button onClick={handleExcel} disabled={exporting} className="btn-excel disabled:opacity-50">
             <span className="flex items-center justify-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-4.5h-17.25m17.25 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125" />
               </svg>
-              DRE Excel
+              {exporting ? 'Gerando…' : 'DRE Excel'}
             </span>
           </button>
         </div>
@@ -473,12 +512,11 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
           const msg = buildWhatsAppMessage(businessData, financialData, diagnosis, metrics, healthStatus);
           window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         }}
-        className="w-full py-3.5 px-6 rounded-2xl font-semibold text-white
+        className="w-full py-3.5 px-6 rounded-xl font-semibold text-white text-[15px]
                    flex items-center justify-center gap-2.5
-                   active:scale-[0.98] transition-all duration-150"
-        style={{ background: 'linear-gradient(135deg, #25d366 0%, #128c7e 100%)', boxShadow: '0 4px 14px rgba(37,211,102,0.35)' }}
+                   active:scale-[0.985] transition-all duration-150 shadow-soft"
+        style={{ background: 'linear-gradient(180deg, #25d366 0%, #128c7e 100%)' }}
       >
-        {/* WhatsApp logo SVG */}
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
         </svg>
@@ -490,7 +528,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         <button onClick={onOpenTracking} className="btn-primary">
           <span className="flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25" />
             </svg>
             Acompanhamento mensal
           </span>
@@ -503,7 +541,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
             Tirar dúvidas com o consultor IA
           </span>
         </button>
-        <button onClick={onRestart} className="btn-secondary">
+        <button onClick={onRestart} className="btn-back">
           <span className="flex items-center justify-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -513,7 +551,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
         </button>
       </div>
 
-      <p className="text-center text-white/25 text-xs pb-4">
+      <p className="text-center text-xs text-ink-400 pb-4">
         FinCheck — diagnóstico em linguagem de dono
       </p>
     </div>

@@ -1,11 +1,19 @@
 import { Router } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import rateLimit from 'express-rate-limit';
+import { getAnthropic, MODEL, isOverloadError } from '../lib/anthropic.js';
+import { openSSE } from '../lib/sse.js';
+import { calcMetrics } from '../lib/metrics.js';
 
 const router = Router();
 
-function getClient() {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-}
+// 5 diagnósticos por IP a cada 10 minutos. Anthropic é caro — sem isso a conta sangra.
+const limiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitos diagnósticos em sequência. Aguarde alguns minutos.' },
+});
 
 function formatBRL(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -16,8 +24,6 @@ function buildItemsList(items) {
   return items.map(i => `  • ${i.desc}: ${formatBRL(i.value)}`).join('\n');
 }
 
-// Fontes: SEBRAE (restaurante/CMV), dados públicos de empresas brasileiras (demais)
-// Ajustados para PMEs, não grandes empresas de capital aberto
 const SECTOR_BENCHMARKS = {
   restaurante: { grossMargin: [55, 70], netMargin: [3, 9],  cmvPct: [30, 40], name: 'Restaurante / Alimentação' },
   varejo:      { grossMargin: [25, 42], netMargin: [2, 8],  cmvPct: [55, 72], name: 'Varejo / Comércio' },
@@ -31,31 +37,18 @@ const SECTOR_BENCHMARKS = {
   outro:       { grossMargin: [30, 45], netMargin: [5, 10], cmvPct: [40, 62], name: 'Outro segmento' },
 };
 
-function buildDiagnosisPrompt({
-  businessName, segment,
-  revenue, cogs,
-  fixedExpenses, fixedExpensesItems,
-  cashBalance,
-  debtPayment, debtPaymentItems,
-  accountsReceivable,
-  mixedAccounts,
-  investments,
-}) {
-  const grossProfit = (revenue || 0) - (cogs || 0);
-  const grossMargin = revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(1) : 0;
-  const ebitda = grossProfit - (fixedExpenses || 0);
-  const netProfit = ebitda - (debtPayment || 0) - (investments || 0);
-  const netMargin = revenue > 0 ? ((netProfit / revenue) * 100).toFixed(1) : 0;
-  const debtRatio = revenue > 0 ? (((debtPayment || 0) / revenue) * 100).toFixed(1) : 0;
-  const breakEven = grossMargin > 0 ? ((fixedExpenses || 0) / (grossMargin / 100)) : 0;
+function buildDiagnosisPrompt(input) {
+  const m = calcMetrics(input);
+  const { businessName, segment, fixedExpensesItems, debtPaymentItems, mixedAccounts } = input;
 
-  const bench = SECTOR_BENCHMARKS[segment] || SECTOR_BENCHMARKS['outro'];
-  const actualCmvPct = revenue > 0 ? ((cogs / revenue) * 100).toFixed(1) : 0;
+  const bench = SECTOR_BENCHMARKS[segment] || SECTOR_BENCHMARKS.outro;
+  const actualCmvPct = m.revenue > 0 ? ((m.cogs / m.revenue) * 100) : 0;
+
   const benchmarkBlock = `
 BENCHMARK SETORIAL — ${bench.name} (fonte: SEBRAE / médias de PMEs brasileiras):
-- Margem Bruta típica: ${bench.grossMargin[0]}%–${bench.grossMargin[1]}%  →  Empresa: ${grossMargin}% ${parseFloat(grossMargin) >= bench.grossMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
-- Margem Líquida típica: ${bench.netMargin[0]}%–${bench.netMargin[1]}%  →  Empresa: ${netMargin}% ${parseFloat(netMargin) >= bench.netMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
-- CMV/Receita típico: ${bench.cmvPct[0]}%–${bench.cmvPct[1]}%  →  Empresa: ${actualCmvPct}% ${parseFloat(actualCmvPct) <= bench.cmvPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
+- Margem Bruta típica: ${bench.grossMargin[0]}%–${bench.grossMargin[1]}%  →  Empresa: ${m.grossMargin.toFixed(1)}% ${m.grossMargin >= bench.grossMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- Margem Líquida típica: ${bench.netMargin[0]}%–${bench.netMargin[1]}%  →  Empresa: ${m.netMargin.toFixed(1)}% ${m.netMargin >= bench.netMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- CMV/Receita típico: ${bench.cmvPct[0]}%–${bench.cmvPct[1]}%  →  Empresa: ${actualCmvPct.toFixed(1)}% ${actualCmvPct <= bench.cmvPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
 Use esses benchmarks no diagnóstico para contextualizar o desempenho da empresa vs. mercado.`;
 
   return `Você é um consultor financeiro especialista em pequenas e médias empresas brasileiras.
@@ -65,30 +58,30 @@ EMPRESA: ${businessName}
 SEGMENTO: ${segment}
 
 DADOS FINANCEIROS DO MÊS:
-- Receita Bruta: ${formatBRL(revenue)}
-- Custo das Vendas (CMV): ${formatBRL(cogs)}
-- Lucro Bruto: ${formatBRL(grossProfit)} (Margem: ${grossMargin}%)
+- Receita Bruta: ${formatBRL(m.revenue)}
+- Custo das Vendas (CMV): ${formatBRL(m.cogs)}
+- Lucro Bruto: ${formatBRL(m.grossProfit)} (Margem: ${m.grossMargin.toFixed(1)}%)
 
-Despesas Fixas Operacionais: ${formatBRL(fixedExpenses)}
+Despesas Fixas Operacionais: ${formatBRL(m.fixedExpenses)}
 ${buildItemsList(fixedExpensesItems)}
 
-- EBITDA / Resultado Operacional: ${formatBRL(ebitda)}
-- Saldo de Caixa: ${formatBRL(cashBalance)}
+- EBITDA / Resultado Operacional: ${formatBRL(m.ebitda)}
+- Saldo de Caixa: ${formatBRL(m.cashBalance)}
 
-Dívidas / Parcelas Mensais: ${formatBRL(debtPayment)}
+Dívidas / Parcelas Mensais: ${formatBRL(m.debtPayment)}
 ${buildItemsList(debtPaymentItems)}
 
-- Investimentos na Empresa: ${formatBRL(investments)}
-- Contas a Receber: ${formatBRL(accountsReceivable)}
+- Investimentos na Empresa: ${formatBRL(m.investments)}
+- Contas a Receber: ${formatBRL(m.accountsReceivable)}
 - Mistura conta pessoal/PJ: ${mixedAccounts ? 'SIM — risco crítico de gestão' : 'Não (contas separadas)'}
 
 ${benchmarkBlock}
 
 CÁLCULOS AUTOMATIZADOS (use esses valores nos textos):
-- Lucro Líquido (o que vai pro bolso do dono): ${formatBRL(netProfit)}
-- Margem Líquida: ${netMargin}%
-- Índice de Endividamento: ${debtRatio}%
-- Ponto de Equilíbrio: ${formatBRL(breakEven)} (precisa faturar ao menos isso para não ter prejuízo)
+- Lucro Líquido (o que vai pro bolso do dono): ${formatBRL(m.netProfit)}
+- Margem Líquida: ${m.netMargin.toFixed(1)}%
+- Índice de Endividamento: ${m.debtRatio.toFixed(1)}%
+- Ponto de Equilíbrio: ${formatBRL(m.breakEven)} (precisa faturar ao menos isso para não ter prejuízo)
 
 CLASSIFICAÇÃO DA SAÚDE FINANCEIRA (use apenas uma):
 - 🔴 Crítica: Margem Líquida < 0% OU caixa negativo
@@ -125,81 +118,60 @@ REGRAS ABSOLUTAS:
 - Comece DIRETO com ## 🏢 Resumo Executivo, sem cabeçalho extra antes`;
 }
 
-router.post('/', async (req, res) => {
-  const {
-    businessName, segment,
-    revenue, cogs,
-    fixedExpenses, fixedExpensesItems,
-    cashBalance,
-    debtPayment, debtPaymentItems,
-    accountsReceivable,
-    mixedAccounts,
-    investments,
-  } = req.body;
+router.post('/', limiter, async (req, res) => {
+  const { businessName, segment, revenue } = req.body || {};
 
   if (!businessName || !segment || revenue === undefined) {
     return res.status(400).json({ error: 'Dados insuficientes para gerar o diagnóstico.' });
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
-  res.flushHeaders();
+  const sse = openSSE(res);
+  const prompt = buildDiagnosisPrompt(req.body);
 
-  const prompt = buildDiagnosisPrompt({
-    businessName, segment,
-    revenue, cogs,
-    fixedExpenses, fixedExpensesItems,
-    cashBalance,
-    debtPayment, debtPaymentItems,
-    accountsReceivable,
-    mixedAccounts,
-    investments,
-  });
+  // Cancelamento: se cliente fecha aba, aborta o stream da Anthropic
+  const ac = new AbortController();
+  req.on('close', () => ac.abort());
 
   const MAX_RETRIES = 6;
-  const isOverloaded = (err) =>
-    err.status === 529 ||
-    (typeof err.message === 'string' && err.message.toLowerCase().includes('overload'));
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const stream = await getClient().messages.stream({
-        model: 'claude-sonnet-4-6',
+      const stream = await getAnthropic().messages.stream({
+        model: MODEL,
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
-      });
+      }, { signal: ac.signal });
 
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
-          res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+      try {
+        for await (const chunk of stream) {
+          if (ac.signal.aborted) return;
+          if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+            sse.sendText(chunk.delta.text);
+          }
         }
+      } catch (streamErr) {
+        if (ac.signal.aborted) return;
+        throw streamErr;
       }
 
-      res.write('data: [DONE]\n\n');
-      res.end();
+      sse.end();
       return;
     } catch (error) {
-      console.error(`Erro Anthropic (tentativa ${attempt}/${MAX_RETRIES}):`, error.status, error.message);
+      if (ac.signal.aborted) return;
+      console.error(`[diagnose] tentativa ${attempt}/${MAX_RETRIES}:`, error.status, error.message);
 
-      if (isOverloaded(error) && attempt < MAX_RETRIES) {
-        // Backoff progressivo: 4s, 8s, 12s, 16s, 20s
+      if (isOverloadError(error) && attempt < MAX_RETRIES) {
         await new Promise(r => setTimeout(r, 4000 * attempt));
         continue;
       }
 
       let msg;
-      if (error.status === 401) {
-        msg = 'Chave de API inválida. Contate o suporte.';
-      } else if (isOverloaded(error)) {
-        msg = 'A IA está temporariamente sobrecarregada. Aguarde alguns segundos e tente novamente.';
-      } else {
-        msg = 'Erro ao gerar diagnóstico. Tente novamente em instantes.';
-      }
+      if (error.status === 401)        msg = 'Chave de API inválida. Contate o suporte.';
+      else if (isOverloadError(error)) msg = 'A IA está temporariamente sobrecarregada. Aguarde alguns segundos e tente novamente.';
+      else                             msg = 'Erro ao gerar diagnóstico. Tente novamente em instantes.';
 
-      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-      res.end();
+      sse.sendError(msg);
+      sse.end();
       return;
     }
   }
