@@ -102,7 +102,7 @@ export default function App() {
   }
 
   return (
-    <div className={step === STEPS.LANDING ? '' : 'min-h-screen flex items-center justify-center p-4'}>
+    <div className={step === STEPS.LANDING ? '' : 'min-h-screen flex items-start sm:items-center justify-center p-4 py-8 bg-ink-50'}>
       {step === STEPS.LANDING && (
         <Landing onEnter={() => setStep(STEPS.ONBOARDING)} />
       )}

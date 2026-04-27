@@ -5,80 +5,63 @@ const DRAFT_KEY = 'fincheck_questionnaire_draft';
 
 const QUESTIONS = [
   {
-    field: 'revenue',
-    type: 'single',
-    title: 'Quanto você faturou esse mês?',
-    subtitle: 'Some tudo que entrou no caixa com vendas — boletos pagos, dinheiro, cartão, Pix. Não inclua o que ainda não foi pago.',
-    example: 'Ex: vendeu R$ 30.000 em produtos e serviços',
-    helper: 'Conta apenas o dinheiro que efetivamente entrou. Pedido feito mas não pago ainda fica em "Contas a receber" mais tarde.',
-    allowZero: false,
+    field: 'revenue', type: 'single', allowZero: false,
+    title: 'Quanto entrou no caixa esse mês?',
+    subtitle: 'Soma tudo que você recebeu — boletos pagos, dinheiro, cartão, Pix. Não inclua o que ainda não foi pago.',
+    example: 'Ex: R$ 30.000 em vendas',
+    helper: 'Conta apenas o que efetivamente entrou. Pedido feito mas não pago vai mais tarde em "Contas a receber".',
   },
   {
-    field: 'cogs',
-    type: 'single',
-    title: 'Quanto gastou pra entregar seu produto ou serviço?',
-    subtitle: 'Inclua: ingredientes, mercadoria revendida, embalagens, mão de obra direta. Não inclua aluguel ou salários fixos.',
-    example: 'Ex: farinha, carne, mercadoria comprada pra revender',
-    helper: 'É o que os contadores chamam de CMV (Custo da Mercadoria Vendida). Se vendeu 100 pizzas, é o custo da farinha + queijo + carne dessas 100 pizzas.',
-    allowZero: false,
+    field: 'cogs', type: 'single', allowZero: false,
+    title: 'Quanto custou pra entregar isso?',
+    subtitle: 'Inclua: matéria-prima, mercadoria revendida, embalagens, comissões. Não inclua aluguel ou folha fixa.',
+    example: 'Ex: ingredientes, mercadoria pra revender',
+    helper: 'É o CMV (Custo da Mercadoria Vendida). Se vendeu 100 pizzas, é o custo da farinha + queijo + carne dessas 100 pizzas.',
   },
   {
-    field: 'fixedExpenses',
-    type: 'itemized',
-    title: 'Quais foram seus gastos fixos do mês?',
-    subtitle: 'Adicione cada gasto separadamente. São os custos que existem mesmo que você não venda nada.',
-    exampleItems: ['Aluguel', 'Salários + encargos', 'Energia elétrica', 'Contador', 'Internet / sistemas'],
-    helper: 'Despesas que vencem todo mês independente de vender ou não: aluguel, folha, contas. Adicione um por linha.',
-    allowZero: false,
+    field: 'fixedExpenses', type: 'itemized', allowZero: false,
+    title: 'Quais foram seus gastos fixos?',
+    subtitle: 'Adicione cada gasto separadamente. Custos que existem mesmo se você não vender nada.',
+    exampleItems: ['Aluguel', 'Salários + encargos', 'Energia', 'Contador', 'Internet'],
+    helper: 'Despesas que vencem todo mês: aluguel, folha, contas. Adicione um por linha.',
   },
   {
-    field: 'cashBalance',
-    type: 'single',
-    title: 'Quanto sobrou no caixa no fim do mês?',
-    subtitle: 'Olhe o saldo atual da sua conta bancária do negócio. Pode ser negativo se estiver no vermelho.',
+    field: 'cashBalance', type: 'single', allowZero: true, allowNegative: true,
+    title: 'Quanto sobrou no caixa?',
+    subtitle: 'Saldo atual da conta bancária do negócio. Pode ser negativo se estiver no vermelho.',
     example: 'Ex: saldo da conta corrente hoje',
-    helper: 'Se o saldo é negativo (cheque especial / no vermelho), digite com o sinal de menos na frente. Ex: -1500',
-    allowZero: true,
-    allowNegative: true,
+    helper: 'Se está negativo (cheque especial), digite com sinal de menos. Ex: -1500',
   },
   {
-    field: 'debtPayment',
-    type: 'itemized',
-    title: 'Você tem dívidas? Liste as parcelas mensais.',
-    subtitle: 'Adicione cada dívida separadamente. Se não tiver dívidas, clique em Próximo.',
-    exampleItems: ['Empréstimo banco', 'Financiamento equipamento', 'Cheque especial', 'Dívida com fornecedor'],
-    helper: 'Apenas o valor da parcela do mês — não o total da dívida. Se financia equipamento R$ 800/mês, digite 800.',
-    allowZero: true,
+    field: 'debtPayment', type: 'itemized', allowZero: true,
+    title: 'Tem dívidas? Liste as parcelas.',
+    subtitle: 'Adicione cada dívida separadamente. Sem dívidas? Pode pular.',
+    exampleItems: ['Empréstimo banco', 'Financiamento equipamento', 'Cheque especial', 'Fornecedor parcelado'],
+    helper: 'Apenas o valor da parcela do mês — não o total. Financia equipamento R$ 800/mês? Digite 800.',
   },
   {
-    field: 'accountsReceivable',
-    type: 'single',
-    title: 'Você tem clientes que ainda não pagaram?',
-    subtitle: 'Valor total de vendas já feitas mas não recebidas. Inclui boletos vencidos, parcelamentos em aberto.',
+    field: 'accountsReceivable', type: 'single', allowZero: true,
+    title: 'Tem clientes que ainda não pagaram?',
+    subtitle: 'Total de vendas feitas mas não recebidas — boletos vencidos, parcelamentos em aberto.',
     example: 'Ex: cliente deve R$ 2.000, outro deve R$ 500',
-    helper: 'É o "dinheiro que existe mas ainda não chegou". Inadimplência alta = sinal de risco.',
-    allowZero: true,
+    helper: 'Dinheiro que existe mas ainda não chegou. Inadimplência alta = sinal de risco.',
   },
   {
-    field: 'mixedAccounts',
-    type: 'choice',
-    title: 'Você usa a mesma conta bancária para gastos pessoais e do negócio?',
-    subtitle: 'Isso ajuda a identificar riscos financeiros e fiscais no seu diagnóstico.',
-    helper: 'Misturar PJ com PF é um dos erros mais comuns — e mais perigosos — em pequenas empresas brasileiras.',
+    field: 'mixedAccounts', type: 'choice', allowZero: true,
+    title: 'Usa a mesma conta pra você e pro negócio?',
+    subtitle: 'Pessoal + PJ na mesma conta — entender isso ajuda no diagnóstico.',
+    helper: 'Misturar PJ com PF é um dos erros mais comuns e perigosos em pequenas empresas brasileiras.',
     options: [
-      { value: 'yes', label: 'Sim, uso a mesma conta',      detail: 'Dinheiro pessoal e do negócio juntos' },
-      { value: 'no',  label: 'Não, tenho contas separadas', detail: 'Cada um no seu lugar' },
+      { value: 'yes', label: 'Sim, é tudo junto', detail: 'Pessoal e empresa misturados' },
+      { value: 'no',  label: 'Não, são separadas', detail: 'Cada um no seu lugar' },
     ],
-    allowZero: true,
   },
   {
-    field: 'investments',
-    type: 'single',
-    title: 'Quanto investiu de volta na empresa esse mês?',
-    subtitle: 'Inclua: compra de equipamentos, reformas, marketing, treinamentos, estoque extra. São gastos para crescimento, não para operação.',
-    example: 'Ex: novo equipamento R$ 3.000 + campanha marketing R$ 1.500',
-    helper: 'É dinheiro que sai do caixa para crescer o negócio. Não confunda com despesas operacionais (aluguel, folha) — essas já entraram nos gastos fixos.',
-    allowZero: true,
+    field: 'investments', type: 'single', allowZero: true,
+    title: 'Investiu de volta no negócio esse mês?',
+    subtitle: 'Equipamentos, reformas, marketing, treinamentos, estoque extra — gastos pra crescer (não pra operar).',
+    example: 'Ex: equipamento R$ 3.000 + marketing R$ 1.500',
+    helper: 'É dinheiro que sai do caixa pra crescer. Não confunda com despesa operacional (aluguel/folha) — essas já foram nos gastos fixos.',
   },
 ];
 
@@ -103,19 +86,19 @@ function formatBRL(value) {
 function HelperTip({ text }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    <div>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1 text-xs text-accent-600 font-semibold hover:text-accent-700 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        {open ? 'Esconder ajuda' : 'O que conta aqui?'}
+        {open ? 'Ok, entendi' : 'O que conta aqui?'}
       </button>
       {open && (
-        <div className="mt-2 p-3 bg-accent-50 border border-accent-100 rounded-lg text-xs text-ink-600 leading-relaxed animate-fade-in">
+        <div className="mt-2 p-3 bg-brand-50 border border-brand-100 rounded-md text-xs text-ink-600 leading-relaxed animate-fade-in">
           {text}
         </div>
       )}
@@ -127,12 +110,10 @@ function ItemizedInput({ items, onChange, exampleItems }) {
   function handleDescChange(idx, val) {
     onChange(items.map((item, i) => i === idx ? { ...item, desc: val } : item));
   }
-
   function handleValueChange(idx, raw) {
     const formatted = raw === '-' ? '-' : formatCurrencyInput(raw);
     onChange(items.map((item, i) => i === idx ? { ...item, value: formatted } : item));
   }
-
   function addItem() { onChange([...items, { desc: '', value: '' }]); }
   function removeItem(idx) { onChange(items.filter((_, i) => i !== idx)); }
 
@@ -164,8 +145,7 @@ function ItemizedInput({ items, onChange, exampleItems }) {
           <button
             type="button"
             onClick={() => removeItem(i)}
-            className="w-7 h-7 flex items-center justify-center text-ink-300 hover:text-red-500
-                       hover:bg-red-50 rounded-lg transition-all duration-150 flex-shrink-0 text-lg leading-none"
+            className="w-7 h-7 flex items-center justify-center text-ink-300 hover:text-loss-500 hover:bg-loss-50 rounded-md transition-all duration-100 flex-shrink-0 text-lg leading-none"
             aria-label="Remover item"
           >
             ×
@@ -182,8 +162,8 @@ function ItemizedInput({ items, onChange, exampleItems }) {
 
       {total > 0 && (
         <div className="flex justify-between items-center px-1 pt-3 border-t border-ink-100 mt-3">
-          <span className="text-xs font-semibold text-ink-400 uppercase tracking-wide">Total</span>
-          <span className="text-xl font-bold text-ink-800 font-mono">{formatBRL(total)}</span>
+          <span className="text-xs font-medium text-ink-400 uppercase tracking-wide">Total</span>
+          <span className="text-lg font-bold text-ink-800 font-mono">{formatBRL(total)}</span>
         </div>
       )}
     </div>
@@ -230,13 +210,11 @@ function buildInitialValues(init) {
 export default function Questionnaire({ onComplete, onBack, initialValues = null }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [values, setValues] = useState(() => {
-    // Restaura draft do sessionStorage se houver, senão initialValues, senão vazio
     const draft = readSession(DRAFT_KEY, null);
     if (draft && !initialValues) return draft;
     return buildInitialValues(initialValues);
   });
 
-  // Autosave a cada mudança
   useEffect(() => { writeSession(DRAFT_KEY, values); }, [values]);
 
   const question = QUESTIONS[currentIndex];
@@ -266,7 +244,6 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
     if (!canProceed) return;
     if (currentIndex < QUESTIONS.length - 1) {
       setCurrentIndex(i => i + 1);
-      // scroll top no mobile
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       const numericData = {};
@@ -308,7 +285,7 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
   return (
     <div className="animate-slide-up">
       {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <button
           onClick={handleBack}
           className="text-ink-400 hover:text-ink-700 text-sm font-medium flex items-center gap-1.5 transition-colors"
@@ -318,43 +295,43 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
           </svg>
           Voltar
         </button>
-        <span className="eyebrow-muted">Etapa 2 de 2</span>
+        <span className="text-xs font-medium text-ink-400">2 / 2</span>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-5">
+      {/* Progress */}
+      <div className="mb-7">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-ink-500">
+          <span className="text-xs font-medium text-ink-500">
             Pergunta {currentIndex + 1} de {QUESTIONS.length}
           </span>
-          <span className="text-xs font-bold text-accent-600 font-mono">
+          <span className="text-xs font-semibold text-ink-700 font-mono">
             {Math.round(progress)}%
           </span>
         </div>
-        <div className="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-ink-100 rounded-full overflow-hidden">
           <div className="progress-fill h-full rounded-full" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      {/* Card da pergunta */}
-      <div className="card p-6 sm:p-7">
-        <h2 className="font-display text-2xl sm:text-[1.65rem] font-semibold text-ink-800 mb-2 leading-tight tracking-tighter">
+      {/* Pergunta */}
+      <div>
+        <h2 className="text-2xl sm:text-[1.6rem] font-bold text-ink-900 tracking-tighter mb-2 leading-tight">
           {question.title}
         </h2>
 
-        <p className="text-ink-500 text-[14.5px] leading-relaxed mb-3">
+        <p className="text-ink-500 text-[15px] leading-relaxed mb-3">
           {question.subtitle}
         </p>
 
         {question.helper && (
-          <div className="mb-5">
+          <div className="mb-6">
             <HelperTip text={question.helper} />
           </div>
         )}
 
-        {/* Input — choice, single ou itemizado */}
+        {/* Input */}
         {isChoice ? (
-          <div className="space-y-3 mb-2">
+          <div className="space-y-2.5 mb-2">
             {question.options.map(opt => {
               const selected = currentValue === opt.value;
               const isRisk   = opt.value === 'yes';
@@ -363,25 +340,25 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
                   key={opt.value}
                   type="button"
                   onClick={() => setValues(prev => ({ ...prev, [question.field]: opt.value }))}
-                  className={`w-full text-left rounded-xl border p-4 transition-all duration-150
+                  className={`w-full text-left rounded-lg border p-4 transition-all duration-100
                     ${selected
                       ? isRisk
-                        ? 'border-red-400 bg-red-50'
-                        : 'border-emerald-500 bg-emerald-50'
-                      : 'border-ink-200 hover:border-ink-300 hover:bg-ink-50'
+                        ? 'border-loss-500 bg-loss-50'
+                        : 'border-money-500 bg-money-50'
+                      : 'border-ink-200 hover:border-ink-300 bg-white'
                     }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
                       ${selected
-                        ? isRisk ? 'border-red-500 bg-red-500' : 'border-emerald-500 bg-emerald-500'
+                        ? isRisk ? 'border-loss-500 bg-loss-500' : 'border-money-500 bg-money-500'
                         : 'border-ink-300'
                       }`}>
-                      {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div>
                       <p className={`text-sm font-semibold leading-tight
-                        ${selected ? (isRisk ? 'text-red-700' : 'text-emerald-700') : 'text-ink-700'}`}>
+                        ${selected ? (isRisk ? 'text-loss-700' : 'text-money-700') : 'text-ink-700'}`}>
                         {opt.label}
                       </p>
                       <p className="text-xs text-ink-400 mt-0.5">{opt.detail}</p>
@@ -399,10 +376,10 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
           />
         ) : (
           <>
-            <div className="bg-ink-50 rounded-xl p-5 mb-3 border border-ink-100
-                            focus-within:border-accent-300 focus-within:bg-accent-50/40 transition-all">
+            <div className="bg-ink-50 rounded-lg p-5 mb-3 border border-ink-200
+                            focus-within:border-brand-400 focus-within:bg-white transition-all">
               <div className="flex items-center justify-center gap-2">
-                <span className="text-2xl font-bold text-ink-300 font-mono">R$</span>
+                <span className="text-2xl font-semibold text-ink-300 font-mono">R$</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -421,47 +398,30 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
               )}
             </div>
 
-            <p className="text-xs text-ink-400 text-center mb-5 flex items-center justify-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-accent-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
+            <p className="text-xs text-ink-400 text-center mb-6">
               {question.example}
             </p>
           </>
         )}
 
         {/* Botões */}
-        <div className={`space-y-3 ${isItemized ? 'mt-6' : ''}`}>
+        <div className={`space-y-2.5 ${isItemized ? 'mt-6' : ''}`}>
           <button onClick={handleNext} disabled={!canProceed} className="btn-primary">
-            {isLast ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Gerar diagnóstico
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                Próximo
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </span>
-            )}
+            <span className="flex items-center justify-center gap-2">
+              {isLast ? 'Gerar diagnóstico' : 'Próximo'}
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </span>
           </button>
           <button onClick={handleBack} className="btn-back">
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
-              Voltar
-            </span>
+            Voltar
           </button>
         </div>
       </div>
 
-      <p className="text-center text-xs text-ink-400 mt-4">
-        Suas respostas são salvas automaticamente no seu navegador
+      <p className="text-center text-xs text-ink-400 mt-5">
+        Suas respostas são salvas automaticamente
       </p>
     </div>
   );
