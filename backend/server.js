@@ -74,9 +74,14 @@ app.get('/api/health', (_req, res) => {
 // Frontend estático em prod
 if (distExists) {
   app.use(express.static(distPath, {
-    maxAge: '1h',
     setHeaders: (res, filePath) => {
-      if (filePath.includes(`${join('assets')}`)) {
+      if (filePath.endsWith('index.html')) {
+        // index.html NUNCA pode ser cacheado — ele referencia hashes que mudam a cada build
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else if (filePath.includes('assets')) {
+        // Assets têm hash no nome → cache eterno
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
@@ -89,9 +94,11 @@ if (distExists) {
   });
 
   // SPA fallback — apenas para navegação humana (rotas que não casam nada acima).
-  // Qualquer GET não-/api e não-/assets cai aqui e recebe o index.html.
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(join(distPath, 'index.html'), (err) => {
       if (err) {
         console.error('[sendFile error]', err.message);
