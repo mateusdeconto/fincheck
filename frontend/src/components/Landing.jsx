@@ -162,10 +162,10 @@ export default function Landing({ onEnter }) {
           <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-md bg-ink-900 flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                {/* F: barra vertical + topo */}
+                {/* F: barra vertical + topo (branco) */}
                 <path d="M7 5 V19 M7 5 H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {/* check verde no lugar da barra do meio */}
-                <path d="M7 12 L10 15 L15 10" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {/* barra do meio (verde) */}
+                <path d="M7 12 H17" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span className="font-bold text-ink-800 text-[15px] tracking-tight">FinCheck</span>
@@ -476,7 +476,7 @@ export default function Landing({ onEnter }) {
             <span className="w-6 h-6 rounded bg-ink-900 flex items-center justify-center">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M7 5 V19 M7 5 H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M7 12 L10 15 L15 10" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7 12 H17" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
             <span className="font-bold text-ink-800 text-sm">FinCheck</span>
