@@ -74,8 +74,8 @@ const STEPS_FLOW = [
 
 const FAQS = [
   {
-    q: 'Os meus números vão pra algum servidor?',
-    a: 'Não armazenamos nada. Seus dados rodam no seu próprio navegador. O backend recebe os números só no momento de gerar o diagnóstico (pra processar com a IA) e descarta logo depois. Histórico mensal fica salvo só no seu dispositivo.',
+    q: 'Os meus números ficam salvos?',
+    a: 'Sim. Seus diagnósticos ficam salvos na sua conta com segurança na nuvem. Você pode acessar de qualquer dispositivo a qualquer momento. Os dados são usados pela IA apenas para gerar o diagnóstico e nunca são compartilhados com terceiros.',
   },
   {
     q: 'É realmente gratuito? Onde tá a pegadinha?',

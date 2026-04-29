@@ -175,7 +175,7 @@ export default function MonthlyTracking({ businessData, financialData, onBack, o
       {!STORAGE_AVAILABLE && (
         <div className="card p-4 border-amber-200 bg-amber-50">
           <p className="text-sm text-amber-700 leading-relaxed">
-            Seu navegador está bloqueando o armazenamento local. O histórico não será salvo entre visitas. Tente sair do modo anônimo.
+            Seu navegador está bloqueando o armazenamento temporário. Tente sair do modo anônimo.
           </p>
         </div>
       )}
@@ -281,7 +281,7 @@ export default function MonthlyTracking({ businessData, financialData, onBack, o
       </div>
 
       <p className="text-center text-xs text-ink-400 pb-4">
-        Dados salvos localmente · nenhum servidor envolvido
+        Dados salvos na sua conta · seguros na nuvem
       </p>
     </div>
   );
