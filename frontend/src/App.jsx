@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { readSession, writeSession, removeSession } from './lib/storage.js';
 import { supabase } from './lib/supabase.js';
+import { saveDiagnosis, loadLastDiagnosis } from './lib/diagnoses.js';
 
 import Landing from './components/Landing.jsx';
 import Onboarding from './components/Onboarding.jsx';
 import Auth from './components/Auth.jsx';
+import PreviousDiagnosis from './components/PreviousDiagnosis.jsx';
 
 const Questionnaire    = lazy(() => import('./components/Questionnaire.jsx'));
 const Loading          = lazy(() => import('./components/Loading.jsx'));
@@ -15,6 +17,7 @@ const MonthlyTracking  = lazy(() => import('./components/MonthlyTracking.jsx'));
 const STEPS = {
   LANDING:       'landing',
   AUTH:          'auth',
+  PREVIOUS:      'previous',
   ONBOARDING:    'onboarding',
   QUESTIONNAIRE: 'questionnaire',
   LOADING:       'loading',
@@ -71,19 +74,14 @@ export default function App() {
   const [financialData, setFinancialData] = useState(initial?.financialData || INITIAL_FINANCIAL);
   const [diagnosis, setDiagnosis]       = useState(initial?.diagnosis || '');
   const [initialValues, setInitialValues] = useState(null);
+  const [previousRecord, setPreviousRecord] = useState(null);
 
-  // Verifica sessão Supabase ao carregar
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
         setUser(data.session.user);
         setAccessToken(data.session.access_token);
-        // Se estava em landing ou auth, pula pra onboarding
-        if (step === STEPS.LANDING || step === STEPS.AUTH) {
-          setStep(initial?.step && initial.step !== STEPS.LANDING && initial.step !== STEPS.AUTH
-            ? initial.step
-            : STEPS.ONBOARDING);
-        }
+        await handleUserLoggedIn(data.session.user, initial?.step);
       }
       setAuthChecked(true);
     });
@@ -101,6 +99,20 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  async function handleUserLoggedIn(loggedUser, currentStep) {
+    // Só verifica histórico se não estava no meio de uma sessão ativa
+    const inProgress = currentStep && currentStep !== STEPS.LANDING && currentStep !== STEPS.AUTH && currentStep !== STEPS.PREVIOUS;
+    if (inProgress) return;
+
+    const record = await loadLastDiagnosis(loggedUser.id);
+    if (record) {
+      setPreviousRecord(record);
+      setStep(STEPS.PREVIOUS);
+    } else {
+      setStep(STEPS.ONBOARDING);
+    }
+  }
+
   useEffect(() => {
     if (step === STEPS.LANDING) {
       removeSession(SESSION_KEY);
@@ -109,10 +121,18 @@ export default function App() {
     saveSession({ step, businessData, financialData, diagnosis });
   }, [step, businessData, financialData, diagnosis]);
 
-  function handleAuthComplete(session) {
+  async function handleAuthComplete(session) {
     setUser(session.user);
     setAccessToken(session.access_token);
-    setStep(STEPS.ONBOARDING);
+    await handleUserLoggedIn(session.user, null);
+  }
+
+  function handleViewPrevious() {
+    if (!previousRecord) return;
+    setBusinessData({ businessName: previousRecord.business_name, segment: previousRecord.segment });
+    setFinancialData(previousRecord.financial_data);
+    setDiagnosis(previousRecord.diagnosis_text);
+    setStep(STEPS.DIAGNOSIS);
   }
 
   function handleOnboardingComplete(data) {
@@ -125,9 +145,17 @@ export default function App() {
     setStep(STEPS.LOADING);
   }
 
-  function handleDiagnosisComplete(text) {
+  async function handleDiagnosisComplete(text) {
     setDiagnosis(text);
     setStep(STEPS.DIAGNOSIS);
+    if (user) {
+      await saveDiagnosis({
+        userId: user.id,
+        businessData,
+        financialData,
+        diagnosisText: text,
+      });
+    }
   }
 
   function handleRestart() {
@@ -137,6 +165,7 @@ export default function App() {
     setFinancialData(INITIAL_FINANCIAL);
     setDiagnosis('');
     setInitialValues(null);
+    setPreviousRecord(null);
   }
 
   function handleRefill(prevEntry) {
@@ -160,8 +189,7 @@ export default function App() {
       )}
 
       <div className={step === STEPS.LANDING ? 'hidden' : (WIDTH_BY_STEP[step] || WIDTH_BY_STEP.default)}>
-        {/* Header com email + logout nos steps internos */}
-        {user && step !== STEPS.AUTH && (
+        {user && step !== STEPS.AUTH && step !== STEPS.PREVIOUS && (
           <div className="flex items-center justify-between mb-4 text-xs text-ink-400">
             <span>{user.email}</span>
             <button onClick={handleLogout} className="hover:text-ink-600 transition-colors">
@@ -173,6 +201,14 @@ export default function App() {
         <Suspense fallback={<FullScreenSpinner />}>
           {step === STEPS.AUTH && (
             <Auth onComplete={handleAuthComplete} />
+          )}
+
+          {step === STEPS.PREVIOUS && previousRecord && (
+            <PreviousDiagnosis
+              record={previousRecord}
+              onView={handleViewPrevious}
+              onNew={() => setStep(STEPS.ONBOARDING)}
+            />
           )}
 
           {step === STEPS.ONBOARDING && (
