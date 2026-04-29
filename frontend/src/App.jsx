@@ -231,6 +231,7 @@ export default function App() {
               record={previousRecord}
               onView={handleViewPrevious}
               onNew={() => setStep(STEPS.ONBOARDING)}
+              onHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
             />
           )}
 

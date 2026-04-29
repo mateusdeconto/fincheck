@@ -1,4 +1,4 @@
-export default function PreviousDiagnosis({ record, onView, onNew }) {
+export default function PreviousDiagnosis({ record, onView, onNew, onHistory }) {
   const date = new Date(record.created_at).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
@@ -37,6 +37,11 @@ export default function PreviousDiagnosis({ record, onView, onNew }) {
           <button onClick={onView} className="w-full py-2.5 bg-ink-900 text-white text-sm font-semibold rounded-lg hover:bg-ink-800 transition-colors">
             Ver diagnóstico salvo
           </button>
+          {onHistory && (
+            <button onClick={onHistory} className="w-full py-2.5 border border-brand-300 text-brand-700 bg-brand-50 text-sm font-semibold rounded-lg hover:bg-brand-100 transition-colors">
+              Ver histórico de análises
+            </button>
+          )}
           <button onClick={onNew} className="w-full py-2.5 border border-ink-300 text-ink-700 text-sm font-semibold rounded-lg hover:bg-ink-50 transition-colors">
             Fazer nova análise
           </button>
