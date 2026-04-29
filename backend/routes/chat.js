@@ -20,8 +20,21 @@ function formatBRL(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 
-function buildSystemPrompt({ businessName, segment, financialData, diagnosis }) {
+function buildSystemPrompt({ businessName, segment, financialData, diagnosis, allDiagnoses = [] }) {
   const m = calcMetrics(financialData);
+
+  let historySection = '';
+  if (allDiagnoses.length > 0) {
+    historySection = `\n\nHISTÓRICO FINANCEIRO (${allDiagnoses.length} meses anteriores — do mais recente ao mais antigo):\n`;
+    allDiagnoses.forEach(d => {
+      const hm = calcMetrics(d.financial_data);
+      const label = d.financial_data?.referenceMonth
+        ? d.financial_data.referenceMonth
+        : new Date(d.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      historySection += `- ${label}: Receita ${formatBRL(hm.revenue)}, Lucro Líquido ${formatBRL(hm.netProfit)} (${hm.netMargin.toFixed(1)}%), Caixa ${formatBRL(hm.cashBalance)}, Margem Bruta ${hm.grossMargin.toFixed(1)}%\n`;
+    });
+    historySection += `\nUse o histórico para identificar tendências, comparar evolução e dar contexto temporal às análises.`;
+  }
 
   return `Você é o assistente financeiro do FinCheck, especialista em pequenas e médias empresas brasileiras.
 
@@ -43,7 +56,7 @@ NÚMEROS CALCULADOS (use estes valores, não recalcule):
 - Ponto de Equilíbrio: ${formatBRL(m.breakEven)}
 
 DIAGNÓSTICO GERADO:
-${diagnosis || '(não disponível)'}
+${diagnosis || '(não disponível)'}${historySection}
 
 REGRAS DO CHAT:
 - Responda SEMPRE referenciando os números reais do usuário acima
@@ -56,7 +69,7 @@ REGRAS DO CHAT:
 }
 
 router.post('/', requireAuth, limiter, async (req, res) => {
-  const { message, history, businessData, financialData, diagnosis } = req.body || {};
+  const { message, history, businessData, financialData, diagnosis, allDiagnoses } = req.body || {};
 
   if (!message || !financialData) {
     return res.status(400).json({ error: 'Mensagem e dados financeiros são obrigatórios.' });
@@ -80,6 +93,7 @@ router.post('/', requireAuth, limiter, async (req, res) => {
         segment: businessData?.segment || 'outro',
         financialData,
         diagnosis,
+        allDiagnoses: allDiagnoses || [],
       }),
       messages,
     }, { signal: ac.signal });

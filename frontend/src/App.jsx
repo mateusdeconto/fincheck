@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { readSession, writeSession, removeSession } from './lib/storage.js';
 import { supabase } from './lib/supabase.js';
 import { saveDiagnosis, loadLastDiagnosis, loadAllDiagnoses } from './lib/diagnoses.js';
+import { loadUserPlan } from './lib/plans.js';
 
 import Landing from './components/Landing.jsx';
 import Onboarding from './components/Onboarding.jsx';
@@ -78,7 +79,8 @@ export default function App() {
 
   const [previousRecord, setPreviousRecord]   = useState(null);
   const [allDiagnoses, setAllDiagnoses]       = useState([]);
-  const [comparisonPair, setComparisonPair]   = useState(null); // [recordA, recordB]
+  const [comparisonPair, setComparisonPair]   = useState(null);
+  const [plan, setPlan]                       = useState('free');
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -104,9 +106,10 @@ export default function App() {
   }, []);
 
   async function handleUserLoggedIn(loggedUser, currentStep) {
+    loadUserPlan(loggedUser.id).then(setPlan);
+
     const inProgress = currentStep && ![STEPS.LANDING, STEPS.AUTH, STEPS.PREVIOUS].includes(currentStep);
     if (inProgress) {
-      // Carrega histórico em background para usar no DRE e botão de histórico
       loadAllDiagnoses(loggedUser.id).then(setAllDiagnoses);
       return;
     }
@@ -211,7 +214,7 @@ export default function App() {
           <div className="flex items-center justify-between mb-4 text-xs text-ink-400">
             <span>{user.email}</span>
             <div className="flex items-center gap-3">
-              {step !== STEPS.HISTORY && allDiagnoses.length > 0 && (
+              {step !== STEPS.HISTORY && allDiagnoses.length > 0 && plan === 'paid' && (
                 <button onClick={() => setStep(STEPS.HISTORY)} className="hover:text-ink-600 transition-colors">
                   Histórico
                 </button>
@@ -231,7 +234,7 @@ export default function App() {
               record={previousRecord}
               onView={handleViewPrevious}
               onNew={() => setStep(STEPS.ONBOARDING)}
-              onHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
+              onHistory={allDiagnoses.length > 0 && plan === 'paid' ? () => setStep(STEPS.HISTORY) : null}
             />
           )}
 
@@ -285,6 +288,7 @@ export default function App() {
               financialData={financialData}
               diagnosis={diagnosis}
               allDiagnoses={allDiagnoses}
+              plan={plan}
               onOpenChat={() => setStep(STEPS.CHAT)}
               onOpenTracking={() => setStep(STEPS.TRACKING)}
               onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
@@ -306,6 +310,7 @@ export default function App() {
               businessData={businessData}
               financialData={financialData}
               diagnosis={diagnosis}
+              allDiagnoses={allDiagnoses}
               accessToken={accessToken}
               onBack={() => setStep(STEPS.DIAGNOSIS)}
             />

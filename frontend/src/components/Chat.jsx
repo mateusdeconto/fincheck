@@ -8,7 +8,7 @@ const SUGGESTED_QUESTIONS = [
   'Como reduzir meus custos fixos?',
 ];
 
-export default function Chat({ businessData, financialData, diagnosis, accessToken, onBack }) {
+export default function Chat({ businessData, financialData, diagnosis, allDiagnoses = [], accessToken, onBack }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -50,6 +50,7 @@ export default function Chat({ businessData, financialData, diagnosis, accessTok
           businessData,
           financialData,
           diagnosis,
+          allDiagnoses: allDiagnoses.slice(0, 6),
         }),
       });
 

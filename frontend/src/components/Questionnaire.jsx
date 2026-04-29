@@ -316,17 +316,21 @@ function LiveDRE({ values, businessData }) {
   const netProfit = ebitda - debt - inv;
   const netMargin = rev > 0 ? (netProfit / rev) * 100 : 0;
 
+  const bench = SECTOR_BENCHMARKS[businessData.segment] || SECTOR_BENCHMARKS.outro;
+  const grossMarginBelowBench = rev > 0 && cogs > 0 && grossMargin < bench.grossMargin[0];
   const insight = getInsight(values, businessData.segment);
 
-  function Row({ label, value, filled, bold = false, sign = '' }) {
+  function Row({ label, value, filled, bold = false, sign = '', benchWarn = false }) {
     const colorClass = !filled
       ? 'text-ink-300'
-      : value >= 0
-        ? 'text-ink-700'
-        : 'text-loss-600';
+      : benchWarn
+        ? 'text-amber-600'
+        : value >= 0
+          ? 'text-ink-700'
+          : 'text-loss-600';
     return (
       <div className="flex justify-between items-center py-1.5 text-xs">
-        <span className={filled ? 'text-ink-500' : 'text-ink-300'}>{label}</span>
+        <span className={filled ? (benchWarn ? 'text-amber-600' : 'text-ink-500') : 'text-ink-300'}>{label}</span>
         <span className={`font-mono tabular-nums ${bold ? 'font-bold text-sm' : 'font-medium'} ${colorClass}`}>
           {filled ? `${sign}${formatBRLCompact(Math.abs(value))}` : '—'}
         </span>
@@ -346,9 +350,12 @@ function LiveDRE({ values, businessData }) {
         <Row label="(+) Receita"        value={rev}         filled={rev > 0}       sign="" />
         <Row label="(−) CMV"            value={cogs}        filled={cogs > 0}      sign="−" />
         <div className="border-t border-ink-100 my-1" />
-        <Row label="= Lucro Bruto"      value={grossProfit} filled={rev > 0 && cogs > 0} bold />
+        <Row label="= Lucro Bruto" value={grossProfit} filled={rev > 0 && cogs > 0} bold benchWarn={grossMarginBelowBench} />
         {rev > 0 && cogs > 0 && (
-          <p className="text-[10px] text-ink-400 text-right font-mono mb-1">{grossMargin.toFixed(1)}% margem</p>
+          <p className={`text-[10px] text-right font-mono mb-1 ${grossMarginBelowBench ? 'text-amber-500 font-semibold' : 'text-ink-400'}`}>
+            {grossMargin.toFixed(1)}% margem
+            {grossMarginBelowBench && ` ⚠ abaixo do setor (${bench.grossMargin[0]}–${bench.grossMargin[1]}%)`}
+          </p>
         )}
 
         <Row label="(−) Gastos fixos"   value={fixed}       filled={fixed > 0}     sign="−" />
