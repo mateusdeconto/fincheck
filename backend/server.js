@@ -25,6 +25,14 @@ const isProd = process.env.NODE_ENV === 'production' || distExists;
 console.log(`[boot] NODE_ENV=${process.env.NODE_ENV || '(not set)'}`);
 console.log(`[boot] dist/index.html exists: ${distExists} (${distPath})`);
 console.log(`[boot] mode: ${isProd ? 'PROD (serving frontend)' : 'DEV (api only)'}`);
+try {
+  const assetFiles = existsSync(join(distPath, 'assets'))
+    ? readdirSync(join(distPath, 'assets')).slice(0, 10).join(', ')
+    : '(assets dir missing)';
+  console.log(`[boot] assets: ${assetFiles}`);
+} catch (e) {
+  console.log(`[boot] assets error: ${e.message}`);
+}
 
 if (isProd && !distExists) {
   console.error('❌ NODE_ENV=production mas frontend/dist/index.html não existe.');
@@ -43,7 +51,8 @@ app.use(helmet({
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
   .split(',').map(s => s.trim()).filter(Boolean);
 
-app.use(cors({
+// CORS só nas rotas de API — assets estáticos não precisam e ES modules enviam Origin
+app.use('/api', cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) return cb(null, true);
