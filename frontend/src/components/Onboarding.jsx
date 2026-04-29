@@ -45,17 +45,23 @@ function MetricPill({ label, value }) {
   );
 }
 
+function currentMonthValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function Onboarding({ onComplete, onBack }) {
   const [businessName, setBusinessName] = useState('');
   const [segment, setSegment] = useState('');
+  const [referenceMonth, setReferenceMonth] = useState(currentMonthValue());
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!businessName.trim() || !segment) return;
-    onComplete({ businessName: businessName.trim(), segment });
+    if (!businessName.trim() || !segment || !referenceMonth) return;
+    onComplete({ businessName: businessName.trim(), segment, referenceMonth });
   }
 
-  const canProceed = businessName.trim().length > 0 && segment !== '';
+  const canProceed = businessName.trim().length > 0 && segment !== '' && referenceMonth !== '';
   const selectedSeg = SEGMENTS.find(s => s.value === segment);
   const bench = segment ? SECTOR_BENCHMARKS[segment] : null;
   const greeting = businessName.trim().length > 1 ? `Prazer, ${businessName.trim().split(' ')[0]}.` : null;
@@ -134,6 +140,21 @@ export default function Onboarding({ onComplete, onBack }) {
             autoComplete="organization"
             maxLength={80}
             autoFocus
+          />
+        </div>
+
+        {/* Mês de referência */}
+        <div>
+          <label className="block text-base font-semibold text-ink-800 mb-2">
+            Qual mês você quer analisar?
+          </label>
+          <p className="text-sm text-ink-400 mb-3">Os dados que você vai preencher são referentes a esse mês.</p>
+          <input
+            type="month"
+            value={referenceMonth}
+            onChange={e => setReferenceMonth(e.target.value)}
+            max={currentMonthValue()}
+            className="input-base text-base py-3"
           />
         </div>
 

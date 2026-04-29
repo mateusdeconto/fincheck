@@ -146,7 +146,8 @@ export default function App() {
   }
 
   function handleQuestionnaireComplete(data) {
-    setFinancialData(data);
+    // Inclui referenceMonth do businessData no financialData para persistir no histórico
+    setFinancialData({ ...data, referenceMonth: businessData.referenceMonth });
     setStep(STEPS.LOADING);
   }
 

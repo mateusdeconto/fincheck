@@ -129,9 +129,18 @@ function calcProjection(f, m) {
 }
 
 // ─── DRE em Excel (suporta múltiplas abas com histórico) ───────────────────
+function formatReferenceMonth(referenceMonth) {
+  if (!referenceMonth) return new Date().toLocaleDateString('pt-BR');
+  const [year, month] = referenceMonth.split('-');
+  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
 async function downloadDRE(businessData, financialData, allDiagnoses = []) {
   const ExcelJS = (await import('exceljs')).default;
   const now = new Date().toLocaleDateString('pt-BR');
+  const currentLabel = businessData.referenceMonth
+    ? formatReferenceMonth(businessData.referenceMonth)
+    : now;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'FinCheck';
@@ -139,10 +148,12 @@ async function downloadDRE(businessData, financialData, allDiagnoses = []) {
 
   // Monta lista de entradas: atual + histórico anterior
   const entries = [
-    { label: 'Atual', date: now, bData: businessData, fData: financialData },
+    { label: 'Atual', date: currentLabel, bData: businessData, fData: financialData },
     ...allDiagnoses.map((d, i) => ({
       label: `Mês ${allDiagnoses.length - i}`,
-      date: new Date(d.created_at).toLocaleDateString('pt-BR'),
+      date: d.financial_data?.referenceMonth
+        ? formatReferenceMonth(d.financial_data.referenceMonth)
+        : new Date(d.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       bData: { businessName: d.business_name, segment: d.segment },
       fData: d.financial_data,
     })),
@@ -365,7 +376,12 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
         <h1 className="text-3xl font-bold text-ink-900 tracking-tighter">
           {businessData.businessName}
         </h1>
-        <p className="text-ink-500 text-sm mt-0.5 capitalize">{businessData.segment}</p>
+        <p className="text-ink-500 text-sm mt-0.5 capitalize">
+          {businessData.segment}
+          {businessData.referenceMonth && (
+            <span className="ml-2 text-ink-400">· {formatReferenceMonth(businessData.referenceMonth)}</span>
+          )}
+        </p>
       </div>
 
       {/* Health badge */}
