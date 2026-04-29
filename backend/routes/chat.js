@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { getAnthropic, MODEL, isOverloadError } from '../lib/anthropic.js';
 import { openSSE } from '../lib/sse.js';
 import { calcMetrics } from '../lib/metrics.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ REGRAS DO CHAT:
 - Lembre o usuário, quando relevante, que você é uma IA e ele deve confirmar decisões importantes com seu contador`;
 }
 
-router.post('/', limiter, async (req, res) => {
+router.post('/', requireAuth, limiter, async (req, res) => {
   const { message, history, businessData, financialData, diagnosis } = req.body || {};
 
   if (!message || !financialData) {

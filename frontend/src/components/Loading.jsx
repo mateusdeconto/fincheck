@@ -17,7 +17,7 @@ function isOverloadedMsg(msg) {
   return lower.includes('sobrecarregad') || lower.includes('overload');
 }
 
-export default function Loading({ businessData, financialData, onComplete, onError }) {
+export default function Loading({ businessData, financialData, accessToken, onComplete, onError }) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [error, setError]               = useState(null);
   const [countdown, setCountdown]       = useState(null);
@@ -41,7 +41,10 @@ export default function Loading({ businessData, financialData, onComplete, onErr
     try {
       const response = await fetch('/api/diagnose', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({ ...businessData, ...financialData }),
         signal: controller.signal,
       });

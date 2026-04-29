@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { getAnthropic, MODEL, isOverloadError } from '../lib/anthropic.js';
 import { openSSE } from '../lib/sse.js';
 import { calcMetrics } from '../lib/metrics.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -118,7 +119,7 @@ REGRAS ABSOLUTAS:
 - Comece DIRETO com ## 🏢 Resumo Executivo, sem cabeçalho extra antes`;
 }
 
-router.post('/', limiter, async (req, res) => {
+router.post('/', requireAuth, limiter, async (req, res) => {
   const { businessName, segment, revenue } = req.body || {};
 
   if (!businessName || !segment || revenue === undefined) {

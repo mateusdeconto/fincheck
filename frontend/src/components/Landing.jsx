@@ -79,7 +79,7 @@ const FAQS = [
   },
   {
     q: 'É realmente gratuito? Onde tá a pegadinha?',
-    a: 'Sem pegadinha. É 100% gratuito hoje, sem cadastro, sem cartão. Foi feito por brasileiros que cansaram de ver pequenas empresas fechando por falta de visão financeira. Se um dia tiver versão paga, será opcional — você decide.',
+    a: 'Sem pegadinha. É 100% gratuito hoje, sem cartão. Você cria uma conta simples com e-mail e senha — e pronto. Foi feito por brasileiros que cansaram de ver pequenas empresas fechando por falta de visão financeira. Se um dia tiver versão paga, será opcional — você decide.',
   },
   {
     q: 'Quanto tempo leva?',
@@ -181,7 +181,7 @@ export default function Landing({ onEnter }) {
             <Reveal>
               <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full bg-ink-100 text-ink-600 text-xs font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-money-500" />
-                100% gratuito · sem cadastro
+                100% gratuito · conta em segundos
               </div>
             </Reveal>
 
@@ -212,7 +212,7 @@ export default function Landing({ onEnter }) {
               </div>
 
               <p className="text-xs text-ink-400 mt-5">
-                Não pedimos email. Não pedimos cartão. Seus números ficam no seu dispositivo.
+                Crie sua conta grátis em segundos. Não pedimos cartão.
               </p>
             </Reveal>
           </div>
@@ -313,7 +313,7 @@ export default function Landing({ onEnter }) {
             Três passos. Cinco minutos.
           </h2>
           <p className="text-ink-500 text-base leading-relaxed">
-            Sem planilha pra preencher. Sem consultor pra contratar. Sem cadastro pra fazer.
+            Sem planilha pra preencher. Sem consultor pra contratar. Cria sua conta em segundos.
           </p>
         </Reveal>
 
@@ -457,7 +457,7 @@ export default function Landing({ onEnter }) {
             podem te poupar meses no escuro.
           </h2>
           <p className="text-ink-500 text-lg leading-relaxed mb-8">
-            Não pedimos email. Não pedimos cartão. Você responde 7 perguntas e recebe seu diagnóstico.
+            Crie sua conta grátis, responda 7 perguntas e receba seu diagnóstico completo.
           </p>
           <button onClick={onEnter} className="btn-cta">
             Começar diagnóstico — gratuito

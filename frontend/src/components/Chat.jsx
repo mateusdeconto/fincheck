@@ -8,7 +8,7 @@ const SUGGESTED_QUESTIONS = [
   'Como reduzir meus custos fixos?',
 ];
 
-export default function Chat({ businessData, financialData, diagnosis, onBack }) {
+export default function Chat({ businessData, financialData, diagnosis, accessToken, onBack }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -40,7 +40,10 @@ export default function Chat({ businessData, financialData, diagnosis, onBack })
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
           message: text,
           history: historyForAPI,
