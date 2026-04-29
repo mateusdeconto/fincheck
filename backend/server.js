@@ -48,14 +48,17 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
-  .split(',').map(s => s.trim()).filter(Boolean);
+// Em produção (frontend + backend mesma origem), CORS não é necessário.
+// Em dev local (5173 → 3001), precisamos liberar. Se ALLOWED_ORIGINS não for
+// definida, abre para qualquer origem — rate limit é a proteção real.
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  : ['*'];
 
-// CORS só nas rotas de API — assets estáticos não precisam e ES modules enviam Origin
 app.use('/api', cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) return cb(null, true);
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error(`CORS bloqueado: ${origin}`));
   },
   credentials: false,
