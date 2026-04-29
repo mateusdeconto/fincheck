@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { readSession, writeSession, removeSession } from './lib/storage.js';
 import { supabase } from './lib/supabase.js';
-import { saveDiagnosis, loadLastDiagnosis } from './lib/diagnoses.js';
+import { saveDiagnosis, loadLastDiagnosis, loadAllDiagnoses } from './lib/diagnoses.js';
 
 import Landing from './components/Landing.jsx';
 import Onboarding from './components/Onboarding.jsx';
 import Auth from './components/Auth.jsx';
 import PreviousDiagnosis from './components/PreviousDiagnosis.jsx';
+import History from './components/History.jsx';
+import Comparison from './components/Comparison.jsx';
 
 const Questionnaire    = lazy(() => import('./components/Questionnaire.jsx'));
 const Loading          = lazy(() => import('./components/Loading.jsx'));
@@ -22,6 +24,8 @@ const STEPS = {
   QUESTIONNAIRE: 'questionnaire',
   LOADING:       'loading',
   DIAGNOSIS:     'diagnosis',
+  HISTORY:       'history',
+  COMPARISON:    'comparison',
   CHAT:          'chat',
   TRACKING:      'tracking',
 };
@@ -41,13 +45,8 @@ const INITIAL_FINANCIAL = {
 
 const SESSION_KEY = 'fincheck_active_session';
 
-function loadSession() {
-  return readSession(SESSION_KEY, null);
-}
-
-function saveSession(state) {
-  writeSession(SESSION_KEY, state);
-}
+function loadSession() { return readSession(SESSION_KEY, null); }
+function saveSession(state) { writeSession(SESSION_KEY, state); }
 
 function FullScreenSpinner() {
   return (
@@ -60,6 +59,8 @@ function FullScreenSpinner() {
 const WIDTH_BY_STEP = {
   questionnaire: 'w-full max-w-5xl',
   diagnosis:     'w-full max-w-2xl',
+  history:       'w-full max-w-2xl',
+  comparison:    'w-full max-w-2xl',
   default:       'w-full max-w-lg',
 };
 
@@ -69,12 +70,15 @@ export default function App() {
   const [accessToken, setAccessToken] = useState(null);
 
   const initial = loadSession();
-  const [step, setStep]                 = useState(initial?.step || STEPS.LANDING);
-  const [businessData, setBusinessData] = useState(initial?.businessData || { businessName: '', segment: '' });
+  const [step, setStep]                   = useState(initial?.step || STEPS.LANDING);
+  const [businessData, setBusinessData]   = useState(initial?.businessData || { businessName: '', segment: '' });
   const [financialData, setFinancialData] = useState(initial?.financialData || INITIAL_FINANCIAL);
-  const [diagnosis, setDiagnosis]       = useState(initial?.diagnosis || '');
+  const [diagnosis, setDiagnosis]         = useState(initial?.diagnosis || '');
   const [initialValues, setInitialValues] = useState(null);
-  const [previousRecord, setPreviousRecord] = useState(null);
+
+  const [previousRecord, setPreviousRecord]   = useState(null);
+  const [allDiagnoses, setAllDiagnoses]       = useState([]);
+  const [comparisonPair, setComparisonPair]   = useState(null); // [recordA, recordB]
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -100,24 +104,25 @@ export default function App() {
   }, []);
 
   async function handleUserLoggedIn(loggedUser, currentStep) {
-    // Só verifica histórico se não estava no meio de uma sessão ativa
-    const inProgress = currentStep && currentStep !== STEPS.LANDING && currentStep !== STEPS.AUTH && currentStep !== STEPS.PREVIOUS;
-    if (inProgress) return;
+    const inProgress = currentStep && ![STEPS.LANDING, STEPS.AUTH, STEPS.PREVIOUS].includes(currentStep);
+    if (inProgress) {
+      // Carrega histórico em background para usar no DRE e botão de histórico
+      loadAllDiagnoses(loggedUser.id).then(setAllDiagnoses);
+      return;
+    }
 
     const record = await loadLastDiagnosis(loggedUser.id);
     if (record) {
       setPreviousRecord(record);
       setStep(STEPS.PREVIOUS);
+      loadAllDiagnoses(loggedUser.id).then(setAllDiagnoses);
     } else {
       setStep(STEPS.ONBOARDING);
     }
   }
 
   useEffect(() => {
-    if (step === STEPS.LANDING) {
-      removeSession(SESSION_KEY);
-      return;
-    }
+    if (step === STEPS.LANDING) { removeSession(SESSION_KEY); return; }
     saveSession({ step, businessData, financialData, diagnosis });
   }, [step, businessData, financialData, diagnosis]);
 
@@ -149,12 +154,10 @@ export default function App() {
     setDiagnosis(text);
     setStep(STEPS.DIAGNOSIS);
     if (user) {
-      await saveDiagnosis({
-        userId: user.id,
-        businessData,
-        financialData,
-        diagnosisText: text,
-      });
+      await saveDiagnosis({ userId: user.id, businessData, financialData, diagnosisText: text });
+      // Recarrega histórico completo após salvar
+      const updated = await loadAllDiagnoses(user.id);
+      setAllDiagnoses(updated);
     }
   }
 
@@ -175,12 +178,26 @@ export default function App() {
     setStep(STEPS.QUESTIONNAIRE);
   }
 
+  function handleSelectFromHistory(record) {
+    setBusinessData({ businessName: record.business_name, segment: record.segment });
+    setFinancialData(record.financial_data);
+    setDiagnosis(record.diagnosis_text);
+    setStep(STEPS.DIAGNOSIS);
+  }
+
+  function handleCompare(recordA, recordB) {
+    setComparisonPair([recordA, recordB]);
+    setStep(STEPS.COMPARISON);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     handleRestart();
   }
 
   if (!authChecked) return <FullScreenSpinner />;
+
+  const noHeader = [STEPS.AUTH, STEPS.PREVIOUS, STEPS.LANDING];
 
   return (
     <div className={step === STEPS.LANDING ? '' : 'min-h-screen flex items-start sm:items-center justify-center p-4 py-8 bg-ink-50'}>
@@ -189,12 +206,17 @@ export default function App() {
       )}
 
       <div className={step === STEPS.LANDING ? 'hidden' : (WIDTH_BY_STEP[step] || WIDTH_BY_STEP.default)}>
-        {user && step !== STEPS.AUTH && step !== STEPS.PREVIOUS && (
+        {user && !noHeader.includes(step) && (
           <div className="flex items-center justify-between mb-4 text-xs text-ink-400">
             <span>{user.email}</span>
-            <button onClick={handleLogout} className="hover:text-ink-600 transition-colors">
-              Sair
-            </button>
+            <div className="flex items-center gap-3">
+              {step !== STEPS.HISTORY && allDiagnoses.length > 0 && (
+                <button onClick={() => setStep(STEPS.HISTORY)} className="hover:text-ink-600 transition-colors">
+                  Histórico
+                </button>
+              )}
+              <button onClick={handleLogout} className="hover:text-ink-600 transition-colors">Sair</button>
+            </div>
           </div>
         )}
 
@@ -208,6 +230,24 @@ export default function App() {
               record={previousRecord}
               onView={handleViewPrevious}
               onNew={() => setStep(STEPS.ONBOARDING)}
+            />
+          )}
+
+          {step === STEPS.HISTORY && (
+            <History
+              records={allDiagnoses}
+              onSelect={handleSelectFromHistory}
+              onCompare={handleCompare}
+              onNewAnalysis={() => setStep(STEPS.ONBOARDING)}
+              onBack={() => setStep(STEPS.DIAGNOSIS)}
+            />
+          )}
+
+          {step === STEPS.COMPARISON && comparisonPair && (
+            <Comparison
+              recordA={comparisonPair[0]}
+              recordB={comparisonPair[1]}
+              onBack={() => setStep(STEPS.HISTORY)}
             />
           )}
 
@@ -242,8 +282,10 @@ export default function App() {
               businessData={businessData}
               financialData={financialData}
               diagnosis={diagnosis}
+              allDiagnoses={allDiagnoses}
               onOpenChat={() => setStep(STEPS.CHAT)}
               onOpenTracking={() => setStep(STEPS.TRACKING)}
+              onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
               onRestart={handleRestart}
             />
           )}

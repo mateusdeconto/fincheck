@@ -128,102 +128,116 @@ function calcProjection(f, m) {
   return { projected, coverageDays, status, sentence, cash, revenue, fixed, debt };
 }
 
-// ─── DRE em Excel ──────────────────────────────────────────────────────────
-async function downloadDRE(businessData, financialData) {
+// ─── DRE em Excel (suporta múltiplas abas com histórico) ───────────────────
+async function downloadDRE(businessData, financialData, allDiagnoses = []) {
   const ExcelJS = (await import('exceljs')).default;
-  const m = calcMetrics(financialData);
   const now = new Date().toLocaleDateString('pt-BR');
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'FinCheck';
   wb.created = new Date();
 
-  const ws = wb.addWorksheet('DRE', { views: [{ showGridLines: false }] });
-  ws.columns = [{ width: 50 }, { width: 22 }, { width: 22 }];
+  // Monta lista de entradas: atual + histórico anterior
+  const entries = [
+    { label: 'Atual', date: now, bData: businessData, fData: financialData },
+    ...allDiagnoses.map((d, i) => ({
+      label: `Mês ${allDiagnoses.length - i}`,
+      date: new Date(d.created_at).toLocaleDateString('pt-BR'),
+      bData: { businessName: d.business_name, segment: d.segment },
+      fData: d.financial_data,
+    })),
+  ];
 
-  const styleTitle = {
-    font: { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } },
-    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2433' } },
-    alignment: { horizontal: 'left', vertical: 'middle', indent: 1 },
-  };
-  const styleSection = {
-    font: { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF2C5DEB' } },
-    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } },
-  };
-  const styleTotal = {
-    font: { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF13172A' } },
-    border: { top: { style: 'thin', color: { argb: 'FF7A8294' } } },
-  };
-  const styleMoney = { numFmt: '"R$" #,##0.00' };
-  const styleMoneyBold = { numFmt: '"R$" #,##0.00', font: { bold: true } };
-  const stylePct = { font: { italic: true, color: { argb: 'FF535B6E' } } };
+  for (const entry of entries) {
+    const m = calcMetrics(entry.fData);
+    const sheetName = `${entry.label} — ${entry.date}`.slice(0, 31);
+    const ws = wb.addWorksheet(sheetName, { views: [{ showGridLines: false }] });
+    ws.columns = [{ width: 50 }, { width: 22 }, { width: 22 }];
 
-  function addRow([a, b, c], opts = {}) {
-    const row = ws.addRow([a, b, c]);
-    if (opts.titleStyle) {
-      row.height = 28;
-      row.eachCell((cell) => { Object.assign(cell, styleTitle); });
-      ws.mergeCells(`A${row.number}:C${row.number}`);
+    const styleTitle = {
+      font: { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2433' } },
+      alignment: { horizontal: 'left', vertical: 'middle', indent: 1 },
+    };
+    const styleSection = {
+      font: { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF2C5DEB' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } },
+    };
+    const styleTotal = {
+      font: { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF13172A' } },
+      border: { top: { style: 'thin', color: { argb: 'FF7A8294' } } },
+    };
+    const styleMoney = { numFmt: '"R$" #,##0.00' };
+    const styleMoneyBold = { numFmt: '"R$" #,##0.00', font: { bold: true } };
+    const stylePct = { font: { italic: true, color: { argb: 'FF535B6E' } } };
+
+    function addRow([a, b, c], opts = {}) {
+      const row = ws.addRow([a, b, c]);
+      if (opts.titleStyle) {
+        row.height = 28;
+        row.eachCell((cell) => { Object.assign(cell, styleTitle); });
+        ws.mergeCells(`A${row.number}:C${row.number}`);
+      }
+      if (opts.section) row.eachCell((cell) => { Object.assign(cell, styleSection); });
+      if (opts.money) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoney };
+      if (opts.moneyBold) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoneyBold };
+      if (opts.pct) row.getCell(3).style = { ...row.getCell(3).style, ...stylePct };
+      if (opts.total) row.eachCell((cell) => { Object.assign(cell, styleTotal); });
+      return row;
     }
-    if (opts.section) row.eachCell((cell) => { Object.assign(cell, styleSection); });
-    if (opts.money) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoney };
-    if (opts.moneyBold) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoneyBold };
-    if (opts.pct) row.getCell(3).style = { ...row.getCell(3).style, ...stylePct };
-    if (opts.total) row.eachCell((cell) => { Object.assign(cell, styleTotal); });
-    return row;
-  }
 
-  addRow([`DRE — ${businessData.businessName}`, '', ''], { titleStyle: true });
-  ws.addRow([]);
-  addRow([`Segmento: ${businessData.segment}`, `Gerado em: ${now}`, '']);
-  ws.addRow([]);
+    addRow([`DRE — ${entry.bData.businessName}`, '', ''], { titleStyle: true });
+    ws.addRow([]);
+    addRow([`Segmento: ${entry.bData.segment}`, `Gerado em: ${entry.date}`, '']);
+    ws.addRow([]);
 
-  addRow(['RECEITAS', '', ''], { section: true });
-  addRow(['(+) Receita Bruta', m.revenue, ''], { money: true });
-  ws.addRow([]);
+    addRow(['RECEITAS', '', ''], { section: true });
+    addRow(['(+) Receita Bruta', m.revenue, ''], { money: true });
+    ws.addRow([]);
 
-  addRow(['CUSTOS DIRETOS', '', ''], { section: true });
-  addRow(['(−) CMV — Custo das Vendas', m.cogs, ''], { money: true });
-  ws.addRow([]);
-  addRow(['= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-  ws.addRow([]);
+    addRow(['CUSTOS DIRETOS', '', ''], { section: true });
+    addRow(['(−) CMV — Custo das Vendas', m.cogs, ''], { money: true });
+    ws.addRow([]);
+    addRow(['= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
+    ws.addRow([]);
 
-  addRow(['DESPESAS FIXAS OPERACIONAIS', '', ''], { section: true });
-  if (financialData.fixedExpensesItems?.length) {
-    financialData.fixedExpensesItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
-  } else {
-    addRow(['    (sem detalhamento)', m.fixedExpenses, ''], { money: true });
-  }
-  addRow(['  Subtotal', m.fixedExpenses, ''], { moneyBold: true });
-  ws.addRow([]);
-  addRow(['= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-  ws.addRow([]);
-
-  if (m.debtPayment > 0) {
-    addRow(['DÍVIDAS / FINANCIAMENTOS', '', ''], { section: true });
-    if (financialData.debtPaymentItems?.length) {
-      financialData.debtPaymentItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+    addRow(['DESPESAS FIXAS OPERACIONAIS', '', ''], { section: true });
+    if (entry.fData.fixedExpensesItems?.length) {
+      entry.fData.fixedExpensesItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
     } else {
-      addRow(['    (sem detalhamento)', m.debtPayment, ''], { money: true });
+      addRow(['    (sem detalhamento)', m.fixedExpenses, ''], { money: true });
     }
-    addRow(['  Subtotal', m.debtPayment, ''], { moneyBold: true });
+    addRow(['  Subtotal', m.fixedExpenses, ''], { moneyBold: true });
     ws.addRow([]);
-  }
-
-  if (m.investments > 0) {
-    addRow(['(−) Investimentos na Empresa', m.investments, ''], { money: true });
+    addRow(['= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
     ws.addRow([]);
+
+    if (m.debtPayment > 0) {
+      addRow(['DÍVIDAS / FINANCIAMENTOS', '', ''], { section: true });
+      if (entry.fData.debtPaymentItems?.length) {
+        entry.fData.debtPaymentItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+      } else {
+        addRow(['    (sem detalhamento)', m.debtPayment, ''], { money: true });
+      }
+      addRow(['  Subtotal', m.debtPayment, ''], { moneyBold: true });
+      ws.addRow([]);
+    }
+
+    if (m.investments > 0) {
+      addRow(['(−) Investimentos na Empresa', m.investments, ''], { money: true });
+      ws.addRow([]);
+    }
+
+    addRow(['= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
+    ws.addRow([]);
+
+    addRow(['OUTROS INDICADORES', '', ''], { section: true });
+    addRow(['Saldo de Caixa', m.cashBalance, ''], { money: true });
+    addRow(['Contas a Receber', m.accountsReceivable, ''], { money: true });
+    addRow(['Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo'], { money: true, pct: true });
+    ws.addRow([]);
+    ws.addRow(['Gerado pelo FinCheck']);
   }
-
-  addRow(['= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-  ws.addRow([]);
-
-  addRow(['OUTROS INDICADORES', '', ''], { section: true });
-  addRow(['Saldo de Caixa', m.cashBalance, ''], { money: true });
-  addRow(['Contas a Receber', m.accountsReceivable, ''], { money: true });
-  addRow(['Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo'], { money: true, pct: true });
-  ws.addRow([]);
-  ws.addRow(['Gerado pelo FinCheck']);
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -315,7 +329,7 @@ const TONE_CLASSES = {
   loss:  { bg: 'bg-loss-50',  border: 'border-loss-200',  text: 'text-loss-700',  dot: 'bg-loss-500' },
 };
 
-export default function Diagnosis({ businessData, financialData, diagnosis, onOpenChat, onOpenTracking, onRestart }) {
+export default function Diagnosis({ businessData, financialData, diagnosis, allDiagnoses = [], onOpenChat, onOpenTracking, onOpenHistory, onRestart }) {
   const renderedHtml  = useMemo(() => renderMarkdown(diagnosis),      [diagnosis]);
   const healthStatus  = useMemo(() => extractHealthStatus(diagnosis), [diagnosis]);
   const metrics       = useMemo(() => calcMetrics(financialData),     [financialData]);
@@ -329,7 +343,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
 
   async function handleExcel() {
     setExporting(true);
-    try { await downloadDRE(businessData, financialData); }
+    try { await downloadDRE(businessData, financialData, allDiagnoses); }
     catch (e) { console.error(e); alert('Erro ao gerar Excel. Tente novamente.'); }
     finally { setExporting(false); }
   }
@@ -510,6 +524,16 @@ export default function Diagnosis({ businessData, financialData, diagnosis, onOp
 
       {/* Ações */}
       <div className="space-y-2.5">
+        {onOpenHistory && allDiagnoses.length > 0 && (
+          <button onClick={onOpenHistory} className="btn-secondary">
+            <span className="flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Ver histórico ({allDiagnoses.length} {allDiagnoses.length === 1 ? 'análise anterior' : 'análises anteriores'})
+            </span>
+          </button>
+        )}
         <button onClick={onOpenTracking} className="btn-primary">
           <span className="flex items-center justify-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>

@@ -23,3 +23,14 @@ export async function loadLastDiagnosis(userId) {
   if (error) return null;
   return data;
 }
+
+export async function loadAllDiagnoses(userId) {
+  const { data, error } = await supabase
+    .from('diagnoses')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return data || [];
+}
