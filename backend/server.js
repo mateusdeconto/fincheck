@@ -75,13 +75,20 @@ app.get('/api/health', (_req, res) => {
 if (distExists) {
   app.use(express.static(distPath, {
     setHeaders: (res, filePath) => {
+      // Força MIME types corretos — Railway/Nixpacks às vezes não detecta automaticamente
+      if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      } else if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      } else if (filePath.endsWith('.svg')) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+      }
+
       if (filePath.endsWith('index.html')) {
-        // index.html NUNCA pode ser cacheado — ele referencia hashes que mudam a cada build
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-      } else if (filePath.includes('assets')) {
-        // Assets têm hash no nome → cache eterno
+      } else if (filePath.includes('/assets/')) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
