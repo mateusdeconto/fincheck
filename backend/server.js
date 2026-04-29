@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -69,6 +69,17 @@ app.get('/api/health', (_req, res) => {
     mode: isProd ? 'prod' : 'dev',
     distExists,
   });
+});
+
+app.get('/api/debug-dist', (_req, res) => {
+  try {
+    const assets = existsSync(join(distPath, 'assets'))
+      ? readdirSync(join(distPath, 'assets'))
+      : [];
+    res.json({ distPath, distExists, assets });
+  } catch (e) {
+    res.json({ distPath, distExists, error: e.message });
+  }
 });
 
 // Frontend estático em prod
