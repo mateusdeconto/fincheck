@@ -78,8 +78,8 @@ const FAQS = [
     a: 'Sim. Seus diagnósticos ficam salvos na sua conta com segurança na nuvem. Você pode acessar de qualquer dispositivo a qualquer momento. Os dados são usados pela IA apenas para gerar o diagnóstico e nunca são compartilhados com terceiros.',
   },
   {
-    q: 'É realmente gratuito? Onde tá a pegadinha?',
-    a: 'Sem pegadinha. É 100% gratuito hoje, sem cartão. Você cria uma conta simples com e-mail e senha — e pronto. Foi feito por brasileiros que cansaram de ver pequenas empresas fechando por falta de visão financeira. Se um dia tiver versão paga, será opcional — você decide.',
+    q: 'Tem versão gratuita e paga?',
+    a: 'Sim. O plano gratuito inclui o diagnóstico completo e exportação de relatório (PDF e DRE). O plano Pro desbloqueia o consultor IA, histórico de análises, acompanhamento mensal e DRE comparativa de múltiplos meses. Você começa grátis e decide se quer mais.',
   },
   {
     q: 'Quanto tempo leva?',
@@ -181,7 +181,7 @@ export default function Landing({ onEnter }) {
             <Reveal>
               <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full bg-ink-100 text-ink-600 text-xs font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-money-500" />
-                100% gratuito · conta em segundos
+                Grátis para começar · Plano Pro disponível
               </div>
             </Reveal>
 
@@ -212,7 +212,7 @@ export default function Landing({ onEnter }) {
               </div>
 
               <p className="text-xs text-ink-400 mt-5">
-                Crie sua conta grátis em segundos. Não pedimos cartão.
+                Diagnóstico gratuito. Plano Pro com IA e histórico completo.
               </p>
             </Reveal>
           </div>
@@ -231,7 +231,7 @@ export default function Landing({ onEnter }) {
         <div className="landing-container py-5 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           <Reveal className="flex items-center gap-2.5">
             <Icon d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" size={16} className="text-ink-400 flex-shrink-0" />
-            <span className="text-ink-600">Dados ficam no seu dispositivo</span>
+            <span className="text-ink-600">Dados salvos na nuvem com segurança</span>
           </Reveal>
           <Reveal delay={80} className="flex items-center gap-2.5">
             <Icon d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" size={16} className="text-ink-400 flex-shrink-0" />
@@ -457,14 +457,14 @@ export default function Landing({ onEnter }) {
             podem te poupar meses no escuro.
           </h2>
           <p className="text-ink-500 text-lg leading-relaxed mb-8">
-            Crie sua conta grátis, responda 7 perguntas e receba seu diagnóstico completo.
+            Crie sua conta, responda 7 perguntas e receba seu diagnóstico completo. Grátis para começar.
           </p>
           <button onClick={onEnter} className="btn-cta">
-            Começar diagnóstico — gratuito
+            Começar diagnóstico — grátis
             <ArrowRight size={16} />
           </button>
           <p className="text-xs text-ink-400 mt-5">
-            Sem letra miúda. Sem upsell escondido.
+            Diagnóstico grátis. Plano Pro para quem quer mais.
           </p>
         </Reveal>
       </section>
@@ -482,7 +482,7 @@ export default function Landing({ onEnter }) {
             <span className="font-bold text-ink-800 text-sm">FinCheck</span>
           </div>
           <p className="text-xs text-ink-400 text-center">
-            Feito pra empresas brasileiras · Dados não saem do seu dispositivo
+            Feito pra empresas brasileiras · Dados salvos na nuvem com segurança
           </p>
         </div>
       </footer>

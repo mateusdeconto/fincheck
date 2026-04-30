@@ -56,7 +56,7 @@ export default function Auth({ onComplete }) {
         </h1>
         <p className="text-sm text-ink-500 mb-6">
           {tab === 'register'
-            ? 'Gratuito. Salve seu diagnóstico e acompanhe sua evolução.'
+            ? 'Diagnóstico grátis. Plano Pro com IA e histórico completo.'
             : 'Continue de onde parou.'}
         </p>
 
