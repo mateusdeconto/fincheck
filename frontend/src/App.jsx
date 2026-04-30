@@ -206,7 +206,12 @@ export default function App() {
   return (
     <div className={step === STEPS.LANDING ? '' : 'min-h-screen flex items-start sm:items-center justify-center p-4 py-8 bg-ink-50'}>
       {step === STEPS.LANDING && (
-        <Landing onEnter={() => setStep(user ? STEPS.ONBOARDING : STEPS.AUTH)} />
+        <Landing
+          onEnter={() => setStep(user ? STEPS.ONBOARDING : STEPS.AUTH)}
+          user={user}
+          plan={plan}
+          onHistory={allDiagnoses.length > 0 && plan === 'paid' ? () => setStep(STEPS.HISTORY) : null}
+        />
       )}
 
       <div className={step === STEPS.LANDING ? 'hidden' : (WIDTH_BY_STEP[step] || WIDTH_BY_STEP.default)}>
