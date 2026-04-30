@@ -1,4 +1,6 @@
+import React from 'react';
 import Reveal from './Reveal.jsx';
+import UpgradeModal from './UpgradeModal.jsx';
 
 function Icon({ d, size = 18, className = '', strokeWidth = 1.6 }) {
   return (
@@ -153,6 +155,15 @@ function ReportPreview() {
 }
 
 export default function Landing({ onEnter, user, plan, onHistory }) {
+  const [showUpgrade, setShowUpgrade] = React.useState(false);
+
+  function handleHistoricoClick() {
+    if (plan === 'paid' && onHistory) {
+      onHistory();
+    } else {
+      setShowUpgrade(true);
+    }
+  }
   return (
     <div className="landing-root">
 
@@ -171,28 +182,18 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
             <span className="font-bold text-ink-800 text-[15px] tracking-tight">FinCheck</span>
           </a>
           <div className="flex items-center gap-2">
-            {user && plan === 'paid' && onHistory && (
-              <button
-                onClick={onHistory}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-700 bg-white border border-ink-200 rounded-lg hover:bg-ink-50 transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Histórico
-              </button>
-            )}
-            {user && (
-              <button
-                onClick={onEnter}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-700 bg-white border border-ink-200 rounded-lg hover:bg-ink-50 transition-colors"
-              >
-                Minha conta
-              </button>
-            )}
-            {!user && (
-              <button onClick={onEnter} className="btn-quiet">Começar →</button>
-            )}
+            <button
+              onClick={handleHistoricoClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-ink-700 bg-white border border-ink-200 rounded-lg hover:bg-ink-50 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Histórico
+            </button>
+            <button onClick={onEnter} className="btn-quiet">
+              {user ? 'Minha conta' : 'Começar →'}
+            </button>
           </div>
         </div>
       </header>
@@ -509,6 +510,8 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
           </p>
         </div>
       </footer>
+
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
     </div>
   );
 }
