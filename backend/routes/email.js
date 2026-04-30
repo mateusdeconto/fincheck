@@ -1,5 +1,5 @@
 import express from 'express';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 const router = express.Router();
 
@@ -118,38 +118,35 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Dados incompletos.' });
   }
 
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const resendKey = process.env.RESEND_API_KEY;
 
-  if (!gmailUser || !gmailPass) {
-    console.error('[email] GMAIL_USER ou GMAIL_APP_PASSWORD não configurados');
+  if (!resendKey) {
+    console.error('[email] RESEND_API_KEY não configurada');
     return res.status(503).json({ error: 'Serviço de e-mail não configurado.' });
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: gmailUser, pass: gmailPass },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-    });
-
-    console.log('[email] verificando conexão SMTP...');
-    await transporter.verify();
-    console.log('[email] SMTP ok, enviando para:', toEmail);
+    const resend = new Resend(resendKey);
 
     const month = businessData.referenceMonth
       ? new Date(businessData.referenceMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
       : new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-    await transporter.sendMail({
-      from: `FinCheck <${gmailUser}>`,
+    console.log('[email] enviando para:', toEmail);
+
+    const { error } = await resend.emails.send({
+      from: 'FinCheck <onboarding@resend.dev>',
       to: toEmail,
       subject: `Diagnóstico financeiro — ${businessData.businessName} · ${month}`,
       html: buildEmailHtml({ businessData, financialData, diagnosis, metrics }),
     });
 
+    if (error) {
+      console.error('[email] Resend error:', error);
+      return res.status(500).json({ error: 'Falha ao enviar e-mail. Tente novamente.' });
+    }
+
+    console.log('[email] enviado com sucesso para:', toEmail);
     res.json({ ok: true });
   } catch (err) {
     console.error('[email] erro ao enviar:', err.message);
