@@ -234,9 +234,12 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
     setEmailSending(true);
     setEmailSent(false);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch('/api/send-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           toEmail: user.email,
           businessData,
@@ -245,6 +248,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
           metrics,
         }),
       });
+      clearTimeout(timeout);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Erro desconhecido');
@@ -253,7 +257,10 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
       setTimeout(() => setEmailSent(false), 5000);
     } catch (e) {
       console.error(e);
-      alert(`Erro ao enviar e-mail: ${e.message}`);
+      const msg = e.name === 'AbortError'
+        ? 'Tempo esgotado. Verifique as configurações de e-mail no servidor.'
+        : `Erro ao enviar e-mail: ${e.message}`;
+      alert(msg);
     } finally {
       setEmailSending(false);
     }

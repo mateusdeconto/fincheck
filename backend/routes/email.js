@@ -130,7 +130,14 @@ router.post('/', async (req, res) => {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
+
+    console.log('[email] verificando conexão SMTP...');
+    await transporter.verify();
+    console.log('[email] SMTP ok, enviando para:', toEmail);
 
     const month = businessData.referenceMonth
       ? new Date(businessData.referenceMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
