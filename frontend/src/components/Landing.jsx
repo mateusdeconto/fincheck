@@ -283,7 +283,7 @@ export default function Landing({ onEnter }) {
             <p className="text-xs font-semibold text-brand-300 uppercase tracking-wider mb-4">
               O custo de não saber
             </p>
-            <h2 className="text-4xl sm:text-5xl font-bold tracking-tighter mb-6 leading-tight">
+            <h2 className="text-4xl sm:text-5xl font-bold tracking-tighter mb-6 leading-tight text-white">
               <span className="text-brand-300">6 em cada 10</span><br />
               pequenas empresas brasileiras
               <br />
