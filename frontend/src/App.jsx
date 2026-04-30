@@ -306,6 +306,7 @@ export default function App() {
               diagnosis={diagnosis}
               allDiagnoses={allDiagnoses}
               plan={plan}
+              user={user}
               onOpenChat={() => setStep(STEPS.CHAT)}
               onOpenTracking={() => setStep(STEPS.TRACKING)}
               onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}

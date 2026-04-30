@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import diagnoseRouter from './routes/diagnose.js';
 import chatRouter from './routes/chat.js';
+import emailRouter from './routes/email.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -74,6 +75,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
 // API
 app.use('/api/diagnose', diagnoseRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/send-report', emailRouter);
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
