@@ -508,6 +508,12 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
           <p className="text-xs text-ink-400 text-center">
             Feito pra empresas brasileiras · Dados salvos na nuvem com segurança
           </p>
+          <p className="text-xs text-ink-400 text-center mt-1">
+            Dúvidas? Fale com a gente:{' '}
+            <a href="mailto:finchecks@gmail.com" className="text-ink-500 hover:text-ink-700 underline underline-offset-2 transition-colors">
+              finchecks@gmail.com
+            </a>
+          </p>
         </div>
       </footer>
 

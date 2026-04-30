@@ -6,10 +6,6 @@ const FEATURES = [
   { icon: '🔮', title: 'Atualizações futuras', desc: 'Todas as novas funcionalidades incluídas sem custo adicional' },
 ];
 
-const CONTACT_EMAIL = 'finchecks@gmail.com';
-const EMAIL_SUBJECT = encodeURIComponent('Quero assinar o FinCheck Pro');
-const EMAIL_BODY = encodeURIComponent('Olá! Tenho interesse em assinar o FinCheck Pro. Podem me passar mais informações?');
-
 export default function UpgradeModal({ onClose }) {
   return (
     <div
@@ -41,17 +37,10 @@ export default function UpgradeModal({ onClose }) {
         </div>
 
         {/* CTA */}
-        <div className="px-6 pb-6 space-y-2">
-          <a
-            href={`mailto:${CONTACT_EMAIL}?subject=${EMAIL_SUBJECT}&body=${EMAIL_BODY}`}
-            className="flex items-center justify-center gap-2 w-full py-3 bg-ink-900 text-white text-sm font-semibold rounded-xl hover:bg-ink-800 transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            Quero assinar o Pro
-          </a>
+        <div className="px-6 pb-6 space-y-3">
+          <div className="w-full py-3 bg-ink-100 text-ink-400 text-sm font-semibold rounded-xl text-center cursor-default select-none">
+            💳 Pagamento online em breve
+          </div>
           <button
             onClick={onClose}
             className="w-full py-2 text-sm text-ink-400 hover:text-ink-600 transition-colors"
