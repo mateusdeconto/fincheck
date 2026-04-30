@@ -1,18 +1,28 @@
-export default function PreviousDiagnosis({ record, onView, onNew, onHistory }) {
+export default function PreviousDiagnosis({ record, onView, onNew, onHistory, onLogout }) {
   const date = new Date(record.created_at).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="flex items-center gap-2 mb-8">
-        <span className="w-8 h-8 rounded-md bg-ink-900 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M7 5 V19 M7 5 H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M7 12 H17" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        <span className="font-bold text-ink-800 text-lg tracking-tight">FinCheck</span>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-md bg-ink-900 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M7 5 V19 M7 5 H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M7 12 H17" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <span className="font-bold text-ink-800 text-lg tracking-tight">FinCheck</span>
+        </div>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="px-3 py-1.5 text-xs font-semibold text-ink-500 bg-white border border-ink-200 rounded-lg hover:bg-ink-50 transition-colors"
+          >
+            Sair
+          </button>
+        )}
       </div>
 
       <div className="bg-white border border-ink-200 rounded-2xl p-8 shadow-sm">

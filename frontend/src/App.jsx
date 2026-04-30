@@ -251,6 +251,7 @@ export default function App() {
               onView={handleViewPrevious}
               onNew={() => setStep(STEPS.ONBOARDING)}
               onHistory={allDiagnoses.length > 0 && plan === 'paid' ? () => setStep(STEPS.HISTORY) : null}
+              onLogout={handleLogout}
             />
           )}
 
