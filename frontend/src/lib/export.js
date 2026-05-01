@@ -1,4 +1,5 @@
 import { calcMetrics, formatBRL } from './metrics.js';
+import * as XLSX from 'xlsx';
 
 export function formatReferenceMonth(referenceMonth) {
   if (!referenceMonth) return new Date().toLocaleDateString('pt-BR');
@@ -57,7 +58,6 @@ function extractHealthStatus(text) {
 
 // ─── DRE em Excel ─────────────────────────────────────────────────────────
 export async function downloadDRE(entries, filename) {
-  const XLSX = (await import('xlsx')).default;
 
   const wb = XLSX.utils.book_new();
 
