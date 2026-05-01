@@ -57,89 +57,78 @@ function extractHealthStatus(text) {
 
 // ─── DRE em Excel ─────────────────────────────────────────────────────────
 export async function downloadDRE(entries, filename) {
-  const ExcelJS = (await import('exceljs')).default;
+  const XLSX = (await import('xlsx')).default;
 
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'FinCheck';
-  wb.created = new Date();
+  const wb = XLSX.utils.book_new();
 
   for (const entry of entries) {
     const m = calcMetrics(entry.fData);
     const sheetName = entry.sheetLabel.slice(0, 31);
-    const ws = wb.addWorksheet(sheetName, { views: [{ showGridLines: false }] });
-    ws.columns = [{ width: 50 }, { width: 22 }, { width: 22 }];
 
-    const styleTitle    = { font: { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2433' } }, alignment: { horizontal: 'left', vertical: 'middle', indent: 1 } };
-    const styleSection  = { font: { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF2C5DEB' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF2FF' } } };
-    const styleTotal    = { font: { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF13172A' } }, border: { top: { style: 'thin', color: { argb: 'FF7A8294' } } } };
-    const styleMoney    = { numFmt: '"R$" #,##0.00' };
-    const styleMoneyBold = { numFmt: '"R$" #,##0.00', font: { bold: true } };
-    const stylePct      = { font: { italic: true, color: { argb: 'FF535B6E' } } };
+    const rows = [];
 
-    function addRow([a, b, c], opts = {}) {
-      const row = ws.addRow([a, b, c]);
-      if (opts.titleStyle) { row.height = 28; row.eachCell(cell => { Object.assign(cell, styleTitle); }); ws.mergeCells(`A${row.number}:C${row.number}`); }
-      if (opts.section)   row.eachCell(cell => { Object.assign(cell, styleSection); });
-      if (opts.money)     row.getCell(2).style = { ...row.getCell(2).style, ...styleMoney };
-      if (opts.moneyBold) row.getCell(2).style = { ...row.getCell(2).style, ...styleMoneyBold };
-      if (opts.pct)       row.getCell(3).style = { ...row.getCell(3).style, ...stylePct };
-      if (opts.total)     row.eachCell(cell => { Object.assign(cell, styleTotal); });
-      return row;
-    }
+    const add = (label, value = '', note = '') => rows.push([label, value, note]);
+    const addBlank = () => rows.push(['', '', '']);
 
-    addRow([`DRE — ${entry.businessName}`, '', ''], { titleStyle: true });
-    ws.addRow([]);
-    addRow([`Segmento: ${entry.segment}`, entry.sheetLabel, '']);
-    ws.addRow([]);
+    add(`DRE — ${entry.businessName}`);
+    add(`Segmento: ${entry.segment}`, entry.sheetLabel);
+    addBlank();
 
-    addRow(['RECEITAS', '', ''], { section: true });
-    addRow(['(+) Receita Bruta', m.revenue, ''], { money: true });
-    ws.addRow([]);
+    add('RECEITAS');
+    add('(+) Receita Bruta', m.revenue);
+    addBlank();
 
-    addRow(['CUSTOS DIRETOS', '', ''], { section: true });
-    addRow(['(−) CMV — Custo das Vendas', m.cogs, ''], { money: true });
-    ws.addRow([]);
-    addRow(['= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-    ws.addRow([]);
+    add('CUSTOS DIRETOS');
+    add('(−) CMV — Custo das Vendas', m.cogs);
+    addBlank();
+    add('= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`);
+    addBlank();
 
-    addRow(['DESPESAS FIXAS OPERACIONAIS', '', ''], { section: true });
+    add('DESPESAS FIXAS OPERACIONAIS');
     if (entry.fData.fixedExpensesItems?.length) {
-      entry.fData.fixedExpensesItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+      entry.fData.fixedExpensesItems.forEach(i => add(`  • ${i.desc}`, i.value));
     } else {
-      addRow(['    (sem detalhamento)', m.fixedExpenses, ''], { money: true });
+      add('  (sem detalhamento)', m.fixedExpenses);
     }
-    addRow(['  Subtotal', m.fixedExpenses, ''], { moneyBold: true });
-    ws.addRow([]);
-    addRow(['= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-    ws.addRow([]);
+    add('  Subtotal', m.fixedExpenses);
+    addBlank();
+    add('= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`);
+    addBlank();
 
     if (m.debtPayment > 0) {
-      addRow(['DÍVIDAS / FINANCIAMENTOS', '', ''], { section: true });
+      add('DÍVIDAS / FINANCIAMENTOS');
       if (entry.fData.debtPaymentItems?.length) {
-        entry.fData.debtPaymentItems.forEach(i => addRow([`    • ${i.desc}`, i.value, ''], { money: true }));
+        entry.fData.debtPaymentItems.forEach(i => add(`  • ${i.desc}`, i.value));
       } else {
-        addRow(['    (sem detalhamento)', m.debtPayment, ''], { money: true });
+        add('  (sem detalhamento)', m.debtPayment);
       }
-      addRow(['  Subtotal', m.debtPayment, ''], { moneyBold: true });
-      ws.addRow([]);
+      add('  Subtotal', m.debtPayment);
+      addBlank();
     }
 
     if (m.investments > 0) {
-      addRow(['(−) Investimentos na Empresa', m.investments, ''], { money: true });
-      ws.addRow([]);
+      add('(−) Investimentos na Empresa', m.investments);
+      addBlank();
     }
 
-    addRow(['= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`], { moneyBold: true, pct: true, total: true });
-    ws.addRow([]);
-    addRow(['OUTROS INDICADORES', '', ''], { section: true });
-    addRow(['Saldo de Caixa', m.cashBalance, ''], { money: true });
-    addRow(['Contas a Receber', m.accountsReceivable, ''], { money: true });
-    addRow(['Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo'], { money: true, pct: true });
-    ws.addRow([]);
-    ws.addRow(['Gerado pelo FinCheck']);
+    add('= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`);
+    addBlank();
+    add('OUTROS INDICADORES');
+    add('Saldo de Caixa', m.cashBalance);
+    add('Contas a Receber', m.accountsReceivable);
+    add('Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo');
+    addBlank();
+    add('Gerado pelo FinCheck');
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Larguras das colunas
+    ws['!cols'] = [{ wch: 46 }, { wch: 20 }, { wch: 22 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
   }
 
-  const buf = await wb.xlsx.writeBuffer();
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
