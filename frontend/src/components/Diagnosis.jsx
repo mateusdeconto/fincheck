@@ -213,10 +213,18 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
   async function handleExcel() {
     setExporting(true);
     try {
-      const entries = [currentToEntry(businessData, financialData), ...allDiagnoses.map(recordToEntry)];
+      const current = currentToEntry(businessData, financialData);
+      const historical = allDiagnoses.map(recordToEntry);
+      // Evita duplicar o mês atual que já está salvo no histórico
+      const seen = new Set([current.sheetLabel]);
+      const unique = [current, ...historical.filter(e => {
+        if (seen.has(e.sheetLabel)) return false;
+        seen.add(e.sheetLabel);
+        return true;
+      })];
       const safeName = businessData.businessName.replace(/\s+/g, '_');
       const now = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-      await downloadDRE(entries, `DRE_${safeName}_${now}.xlsx`);
+      await downloadDRE(unique, `DRE_${safeName}_${now}.xlsx`);
     }
     catch (e) { console.error(e); alert('Erro ao gerar Excel. Tente novamente.'); }
     finally { setExporting(false); }
