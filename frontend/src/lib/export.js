@@ -1,5 +1,5 @@
 import { calcMetrics, formatBRL } from './metrics.js';
-import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 
 export function formatReferenceMonth(referenceMonth) {
   if (!referenceMonth) return new Date().toLocaleDateString('pt-BR');
@@ -57,15 +57,32 @@ function extractHealthStatus(text) {
 }
 
 // ─── DRE em Excel ─────────────────────────────────────────────────────────
-export async function downloadDRE(entries, filename) {
+const BRL_FMT = '"R$"#,##0.00';
 
-  const wb = XLSX.utils.book_new();
+const S = {
+  title:      { font: { name: 'Calibri', sz: 14, bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: '1F2433' } }, alignment: { horizontal: 'left', indent: 1, vertical: 'center' } },
+  section:    { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '2C5DEB' } }, fill: { patternType: 'solid', fgColor: { rgb: 'EEF2FF' } } },
+  total:      { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '13172A' } }, border: { top: { style: 'thin', color: { rgb: '7A8294' } } } },
+  totalMoney: { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '13172A' } }, numFmt: BRL_FMT, border: { top: { style: 'thin', color: { rgb: '7A8294' } } } },
+  totalPct:   { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '535B6E' } }, border: { top: { style: 'thin', color: { rgb: '7A8294' } } } },
+  label:      { font: { name: 'Calibri', sz: 11, color: { rgb: '363C4D' } } },
+  money:      { font: { name: 'Calibri', sz: 11, color: { rgb: '13172A' } }, numFmt: BRL_FMT },
+  pct:        { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '535B6E' } } },
+  meta:       { font: { name: 'Calibri', sz: 11, color: { rgb: '535B6E' } } },
+  footer:     { font: { name: 'Calibri', sz: 10, italic: true, color: { rgb: '9CA3AF' } } },
+};
+
+function c(v, s, t) {
+  return { v, s, t: t || (typeof v === 'number' ? 'n' : 's') };
+}
+
+export async function downloadDRE(entries, filename) {
+  const wb = XLSXStyle.utils.book_new();
   const usedNames = new Set();
 
   for (const entry of entries) {
     const m = calcMetrics(entry.fData);
     let sheetName = entry.sheetLabel.slice(0, 31);
-    // Garante nome único
     if (usedNames.has(sheetName)) {
       let i = 2;
       while (usedNames.has(`${sheetName.slice(0, 28)} (${i})`)) i++;
@@ -74,69 +91,95 @@ export async function downloadDRE(entries, filename) {
     usedNames.add(sheetName);
 
     const rows = [];
+    const merges = [];
+    let r = 0;
 
-    const add = (label, value = '', note = '') => rows.push([label, value, note]);
-    const addBlank = () => rows.push(['', '', '']);
+    const addTitle = (text) => {
+      merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
+      rows.push([c(text, S.title), c('', S.title), c('', S.title)]);
+      r++;
+    };
+    const addMeta = (a, b = '') => {
+      rows.push([c(a, S.meta), c(b, S.meta), c('', {})]);
+      r++;
+    };
+    const addBlank = () => {
+      rows.push([c('', {}), c('', {}), c('', {})]);
+      r++;
+    };
+    const addSection = (text) => {
+      merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
+      rows.push([c(text, S.section), c('', S.section), c('', S.section)]);
+      r++;
+    };
+    const addRow = (label, value, pctText = '') => {
+      rows.push([c(label, S.label), c(value, S.money), c(pctText, S.pct)]);
+      r++;
+    };
+    const addTotal = (label, value, pctText = '') => {
+      rows.push([c(label, S.total), c(value, S.totalMoney), c(pctText, S.totalPct)]);
+      r++;
+    };
 
-    add(`DRE — ${entry.businessName}`);
-    add(`Segmento: ${entry.segment}`, entry.sheetLabel);
+    addTitle(`DRE — ${entry.businessName}`);
+    addMeta(`${entry.segment}`, entry.sheetLabel);
     addBlank();
 
-    add('RECEITAS');
-    add('(+) Receita Bruta', m.revenue);
+    addSection('RECEITAS');
+    addRow('(+) Receita Bruta', m.revenue);
     addBlank();
 
-    add('CUSTOS DIRETOS');
-    add('(−) CMV — Custo das Vendas', m.cogs);
+    addSection('CUSTOS DIRETOS');
+    addRow('(−) CMV — Custo das Vendas', m.cogs);
     addBlank();
-    add('= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`);
+    addTotal('= LUCRO BRUTO', m.grossProfit, `Margem: ${m.grossMargin.toFixed(1)}%`);
     addBlank();
 
-    add('DESPESAS FIXAS OPERACIONAIS');
+    addSection('DESPESAS FIXAS OPERACIONAIS');
     if (entry.fData.fixedExpensesItems?.length) {
-      entry.fData.fixedExpensesItems.forEach(i => add(`  • ${i.desc}`, i.value));
+      entry.fData.fixedExpensesItems.forEach(i => addRow(`    • ${i.desc}`, i.value));
     } else {
-      add('  (sem detalhamento)', m.fixedExpenses);
+      addRow('    (sem detalhamento)', m.fixedExpenses);
     }
-    add('  Subtotal', m.fixedExpenses);
+    addRow('  Subtotal', m.fixedExpenses);
     addBlank();
-    add('= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`);
+    addTotal('= EBITDA', m.ebitda, `Margem: ${(m.revenue > 0 ? (m.ebitda / m.revenue) * 100 : 0).toFixed(1)}%`);
     addBlank();
 
     if (m.debtPayment > 0) {
-      add('DÍVIDAS / FINANCIAMENTOS');
+      addSection('DÍVIDAS / FINANCIAMENTOS');
       if (entry.fData.debtPaymentItems?.length) {
-        entry.fData.debtPaymentItems.forEach(i => add(`  • ${i.desc}`, i.value));
+        entry.fData.debtPaymentItems.forEach(i => addRow(`    • ${i.desc}`, i.value));
       } else {
-        add('  (sem detalhamento)', m.debtPayment);
+        addRow('    (sem detalhamento)', m.debtPayment);
       }
-      add('  Subtotal', m.debtPayment);
+      addRow('  Subtotal', m.debtPayment);
       addBlank();
     }
 
     if (m.investments > 0) {
-      add('(−) Investimentos na Empresa', m.investments);
+      addRow('(−) Investimentos na Empresa', m.investments);
       addBlank();
     }
 
-    add('= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`);
+    addTotal('= LUCRO LÍQUIDO', m.netProfit, `Margem: ${m.netMargin.toFixed(1)}%`);
     addBlank();
-    add('OUTROS INDICADORES');
-    add('Saldo de Caixa', m.cashBalance);
-    add('Contas a Receber', m.accountsReceivable);
-    add('Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo');
+    addSection('OUTROS INDICADORES');
+    addRow('Saldo de Caixa', m.cashBalance);
+    addRow('Contas a Receber', m.accountsReceivable);
+    addRow('Ponto de Equilíbrio', m.breakEven, 'Faturamento mínimo');
     addBlank();
-    add('Gerado pelo FinCheck');
+    rows.push([c('Gerado pelo FinCheck', S.footer), c('', {}), c('', {})]);
 
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-
-    // Larguras das colunas
+    const ws = XLSXStyle.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 46 }, { wch: 20 }, { wch: 22 }];
+    ws['!merges'] = merges;
+    ws['!rows'] = [{ hpt: 28 }];
 
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSXStyle.utils.book_append_sheet(wb, ws, sheetName);
   }
 
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const buf = XLSXStyle.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
