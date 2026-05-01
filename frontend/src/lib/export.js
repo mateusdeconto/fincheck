@@ -60,10 +60,18 @@ function extractHealthStatus(text) {
 export async function downloadDRE(entries, filename) {
 
   const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
 
   for (const entry of entries) {
     const m = calcMetrics(entry.fData);
-    const sheetName = entry.sheetLabel.slice(0, 31);
+    let sheetName = entry.sheetLabel.slice(0, 31);
+    // Garante nome único
+    if (usedNames.has(sheetName)) {
+      let i = 2;
+      while (usedNames.has(`${sheetName.slice(0, 28)} (${i})`)) i++;
+      sheetName = `${sheetName.slice(0, 28)} (${i})`;
+    }
+    usedNames.add(sheetName);
 
     const rows = [];
 
