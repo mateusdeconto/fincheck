@@ -89,9 +89,9 @@ export default function Onboarding({ onComplete, onBack }) {
 
       {/* Saudação calorosa + headline */}
       <div className="mb-7">
-        <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full bg-money-50 border border-money-100">
+        <div className="inline-flex items-center gap-2 mb-4 px-3.5 py-1.5 rounded-full bg-money-50 border border-money-200">
           <span className="w-1.5 h-1.5 rounded-full bg-money-500 animate-pulse" />
-          <span className="text-xs font-semibold text-money-700">Vamos começar</span>
+          <span className="text-xs font-bold text-money-700 tracking-wide">Vamos começar</span>
         </div>
 
         <h1 className="text-[2rem] sm:text-[2.4rem] font-bold text-ink-900 tracking-tighter leading-[1.1] mb-3">
@@ -113,14 +113,14 @@ export default function Onboarding({ onComplete, onBack }) {
         </p>
       </div>
 
-      {/* Card de promessa — o que ele recebe no fim */}
-      <div className="mb-8 p-4 rounded-xl bg-ink-900 text-white flex items-center gap-4">
-        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+      {/* Card de promessa */}
+      <div className="mb-8 p-4 rounded-2xl bg-navy-900 text-white flex items-center gap-4 border border-white/5">
+        <div className="w-10 h-10 rounded-xl bg-money-500/20 flex items-center justify-center flex-shrink-0">
           <Icon d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" size={20} className="text-money-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">Em ~5 minutos você recebe</p>
-          <p className="text-xs text-ink-300 mt-0.5">
+          <p className="text-sm font-bold text-white">Em ~5 minutos você recebe</p>
+          <p className="text-xs text-white/50 mt-0.5">
             Diagnóstico completo · DRE em Excel · Plano de ação prático
           </p>
         </div>

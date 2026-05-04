@@ -4,79 +4,104 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ===== PALETA PROFISSIONAL =====
-        // Azul-tinta profundo (Stripe-like) + verdes dinheiro + cinzas neutros.
-        // Sem mais cream/sand — paleta que comunica "fintech séria pra dono de empresa".
+        // ===== FINCHECK DESIGN SYSTEM v3 =====
+        // Palheta quente: parchment + verde-dinheiro + navy dark.
+        // Diferenciada de todo SaaS genérico cold-gray.
+
+        // Tons de tinta — base quente (não cold gray)
         ink: {
-          50:  '#f7f8fa', // background base
-          100: '#eceef2', // surface muted
-          200: '#dde0e6', // border padrão
-          300: '#b8bdc8', // muted text / icons
-          400: '#7a8294', // secondary text
-          500: '#535b6e', // body text
-          600: '#363c4d', // primary text
-          700: '#1f2433', // títulos
-          800: '#13172a', // títulos fortes
-          900: '#0a0d1a', // ink absoluto
+          50:  '#F5F2EC', // parchment — bg principal da app
+          100: '#EAE5DB', // surface muted
+          200: '#D5CFC4', // borda padrão
+          300: '#AEA89E', // muted icons/text
+          400: '#7A7469', // secondary text
+          500: '#524C44', // body text
+          600: '#342E27', // primary text
+          700: '#1E1914', // headings
+          800: '#120E0A', // headings fortes
+          900: '#080604', // absolute dark
         },
-        // Azul-marca — confiança bancária, mas mais vivo que navy puro
-        brand: {
-          50:  '#eef2ff',
-          100: '#dbe5ff',
-          200: '#b6cbff',
-          300: '#85a8ff',
-          400: '#5481fa',
-          500: '#2c5deb', // primário CTA
-          600: '#1d47cf',
-          700: '#1a3aa6',
-          800: '#1a3380',
-          900: '#192a5e',
-        },
-        // Verdes dinheiro — pra ganhos, métricas positivas
+
+        // Verde-dinheiro — identidade FinCheck
         money: {
-          50:  '#ecfdf5',
-          100: '#d1fae5',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
+          50:  '#EDFBF2',
+          100: '#D3F5E1',
+          200: '#A8EBCA',
+          300: '#6DDBA9',
+          400: '#33C484',
+          500: '#0FAD6A', // principal
+          600: '#0A8E56',
+          700: '#076E42',
+          800: '#044D2F',
+          900: '#022C1B',
         },
-        // Vermelhos — alertas e perdas
+
+        // Azul-marca — links, focus, progress bar
+        brand: {
+          50:  '#EEF2FF',
+          100: '#DBE5FF',
+          200: '#B6CBFF',
+          300: '#85A8FF',
+          400: '#5481FA',
+          500: '#2C5DEB',
+          600: '#1D47CF',
+          700: '#1A3AA6',
+          800: '#1A3380',
+          900: '#192A5E',
+        },
+
+        // Vermelho-alerta
         loss: {
-          50:  '#fef2f2',
-          100: '#fee2e2',
-          500: '#ef4444',
-          600: '#dc2626',
-          700: '#b91c1c',
+          50:  '#FFF1F0',
+          100: '#FFE0DC',
+          200: '#FFC4BC',
+          500: '#F03A2E',
+          600: '#D42F24',
+          700: '#B2271E',
+        },
+
+        // Navy — seções escuras hero/CTA
+        navy: {
+          800: '#0C1528',
+          900: '#080E1C',
+          950: '#030810',
         },
       },
+
       fontFamily: {
-        // Inter para tudo. Plus Jakarta sai (era "design system jovial demais").
-        // Inter é a fonte padrão de fintech sério hoje (Stripe, Linear, Vercel).
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
+
       letterSpacing: {
-        tightest: '-0.04em',
-        tighter:  '-0.022em',
-        tight:    '-0.012em',
+        tightest: '-0.045em',
+        tighter:  '-0.028em',
+        tight:    '-0.015em',
       },
+
       animation: {
-        'fade-in':   'fadeIn 0.25s ease-out',
-        'slide-up':  'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-        'pulse-slow':'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'spin-slow': 'spin 2s linear infinite',
+        'fade-in':    'fadeIn 0.25s ease-out',
+        'slide-up':   'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'spin-slow':  'spin 2s linear infinite',
+        'float':      'float 6s ease-in-out infinite',
       },
+
       keyframes: {
-        fadeIn:   { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-        slideUp:  { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        fadeIn:  { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        slideUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+        float:   { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } },
       },
+
       boxShadow: {
-        // Sombras sóbrias, não dramáticas
-        'xs':   '0 1px 2px rgba(13,17,38,0.05)',
-        'sm':   '0 1px 3px rgba(13,17,38,0.06), 0 1px 2px rgba(13,17,38,0.04)',
-        'md':   '0 4px 12px -2px rgba(13,17,38,0.08), 0 2px 4px -1px rgba(13,17,38,0.04)',
-        'lg':   '0 12px 32px -8px rgba(13,17,38,0.12), 0 4px 8px -2px rgba(13,17,38,0.06)',
-        'card': '0 1px 3px rgba(13,17,38,0.04), 0 1px 2px rgba(13,17,38,0.03)',
+        'xs':         '0 1px 2px rgba(18,14,10,0.06)',
+        'sm':         '0 1px 3px rgba(18,14,10,0.08), 0 1px 2px rgba(18,14,10,0.04)',
+        'md':         '0 4px 12px -2px rgba(18,14,10,0.10), 0 2px 4px -1px rgba(18,14,10,0.06)',
+        'lg':         '0 12px 32px -8px rgba(18,14,10,0.14), 0 4px 8px -2px rgba(18,14,10,0.08)',
+        'card':       '0 2px 8px rgba(18,14,10,0.06), 0 1px 2px rgba(18,14,10,0.04)',
+        'card-hover': '0 8px 24px rgba(18,14,10,0.12), 0 2px 4px rgba(18,14,10,0.06)',
+        'money':      '0 4px 20px rgba(15,173,106,0.28)',
+        'money-lg':   '0 8px 32px rgba(15,173,106,0.36)',
       },
     },
   },

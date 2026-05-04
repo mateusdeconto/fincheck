@@ -179,11 +179,17 @@ export default function Loading({ businessData, financialData, accessToken, onCo
       <div className="flex justify-center mb-7">
         <div className="relative w-16 h-16">
           <div className="absolute inset-0 rounded-full border-2 border-ink-100" />
-          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-ink-800 animate-spin" />
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-money-500 animate-spin" />
+          {/* Inner dot */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-4 h-4 rounded-full bg-money-100 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-money-500" />
+            </div>
+          </div>
         </div>
       </div>
 
-      <p className="text-xs font-medium text-ink-400 uppercase tracking-wider mb-2">
+      <p className="text-[11px] font-bold text-money-600 uppercase tracking-widest mb-2">
         {businessData.businessName}
       </p>
 
@@ -191,7 +197,7 @@ export default function Loading({ businessData, financialData, accessToken, onCo
         {LOADING_MESSAGES[messageIndex]}
       </h2>
 
-      <p className="text-ink-500 text-sm">
+      <p className="text-ink-400 text-sm">
         Analisando seus números — leva alguns segundos.
       </p>
 
@@ -200,7 +206,7 @@ export default function Loading({ businessData, financialData, accessToken, onCo
           <div
             key={i}
             className={`h-1 rounded-full transition-all duration-300 ${
-              i === messageIndex ? 'bg-ink-800 w-5' : 'bg-ink-200 w-1.5'
+              i === messageIndex ? 'bg-money-500 w-5' : 'bg-ink-200 w-1.5'
             }`}
           />
         ))}
