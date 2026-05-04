@@ -5,6 +5,7 @@ import { openSSE } from '../lib/sse.js';
 import { calcMetrics } from '../lib/metrics.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getMacroData } from '../lib/macroData.js';
+import { CFO_PERSONA } from '../lib/persona.js';
 
 const router = Router();
 
@@ -190,10 +191,7 @@ Use esses benchmarks para contextualizar o desempenho da empresa vs. mercado em 
 
   const macroBlock = buildMacroBlock(macroData);
 
-  return `Você é um consultor financeiro especialista em pequenas e médias empresas brasileiras.
-Analise os dados financeiros abaixo e gere um diagnóstico completo.
-
-EMPRESA: ${businessName}
+  return `EMPRESA: ${businessName}
 SEGMENTO: ${segment}
 
 DADOS FINANCEIROS DO MÊS:
@@ -286,6 +284,7 @@ router.post('/', requireAuth, limiter, async (req, res) => {
       const stream = await getAnthropic().messages.stream({
         model: MODEL,
         max_tokens: 2000,
+        system: CFO_PERSONA,
         messages: [{ role: 'user', content: prompt }],
       }, { signal: ac.signal });
 

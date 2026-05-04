@@ -81,6 +81,7 @@ export default function App() {
   const [allDiagnoses, setAllDiagnoses]       = useState([]);
   const [comparisonPair, setComparisonPair]   = useState(null);
   const [chatOrigin, setChatOrigin]           = useState(STEPS.DIAGNOSIS);
+  const [trackingOrigin, setTrackingOrigin]   = useState(STEPS.DIAGNOSIS);
   const [plan, setPlan]                       = useState('free');
   const [macroData, setMacroData]             = useState(null);
 
@@ -151,8 +152,13 @@ export default function App() {
   }
 
   function handleQuestionnaireComplete(data) {
-    // Inclui referenceMonth do businessData no financialData para persistir no histórico
     setFinancialData({ ...data, referenceMonth: businessData.referenceMonth });
+    setStep(STEPS.LOADING);
+  }
+
+  function handleCorrectData(correctedFinancialData) {
+    setFinancialData(correctedFinancialData);
+    setDiagnosis('');
     setStep(STEPS.LOADING);
   }
 
@@ -186,7 +192,11 @@ export default function App() {
   }
 
   function handleSelectFromHistory(record) {
-    setBusinessData({ businessName: record.business_name, segment: record.segment });
+    setBusinessData({
+      businessName: record.business_name,
+      segment: record.segment,
+      customSegment: record.financial_data?._customSegment || null,
+    });
     setFinancialData(record.financial_data);
     setDiagnosis(record.diagnosis_text);
     setStep(STEPS.DIAGNOSIS);
@@ -264,6 +274,13 @@ export default function App() {
               onSelect={handleSelectFromHistory}
               onCompare={handleCompare}
               onNewAnalysis={() => setStep(STEPS.ONBOARDING)}
+              onOpenTracking={allDiagnoses.length > 0 ? () => {
+                const latest = allDiagnoses[0];
+                setBusinessData({ businessName: latest.business_name, segment: latest.segment });
+                setFinancialData(latest.financial_data);
+                setTrackingOrigin(STEPS.HISTORY);
+                setStep(STEPS.TRACKING);
+              } : null}
               onBack={() => setStep(STEPS.DIAGNOSIS)}
             />
           )}
@@ -313,8 +330,9 @@ export default function App() {
               user={user}
               macroData={macroData}
               onOpenChat={() => { setChatOrigin(STEPS.DIAGNOSIS); setStep(STEPS.CHAT); }}
-              onOpenTracking={() => setStep(STEPS.TRACKING)}
+              onOpenTracking={() => { setTrackingOrigin(STEPS.DIAGNOSIS); setStep(STEPS.TRACKING); }}
               onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
+              onCorrectData={handleCorrectData}
               onRestart={handleRestart}
             />
           )}
@@ -323,7 +341,7 @@ export default function App() {
             <MonthlyTracking
               businessData={businessData}
               financialData={financialData}
-              onBack={() => setStep(STEPS.DIAGNOSIS)}
+              onBack={() => setStep(trackingOrigin)}
               onRefill={handleRefill}
             />
           )}

@@ -4,6 +4,7 @@ import { getAnthropic, MODEL, isOverloadError } from '../lib/anthropic.js';
 import { openSSE } from '../lib/sse.js';
 import { calcMetrics } from '../lib/metrics.js';
 import { requireAuth } from '../middleware/auth.js';
+import { CFO_PERSONA, CHAT_RESPONSE_FORMAT } from '../lib/persona.js';
 
 const router = Router();
 
@@ -69,7 +70,7 @@ function buildSystemPrompt({ businessName, segment, financialData, diagnosis, al
     historySection += `\nUse o histórico para identificar tendências, comparar evolução e dar contexto temporal às análises.`;
   }
 
-  return `Você é o assistente financeiro do FinCheck, especialista em pequenas e médias empresas brasileiras.
+  return `${CFO_PERSONA}
 
 CONTEXTO DO USUÁRIO:
 - Empresa: ${businessName} (${segment})
@@ -92,13 +93,7 @@ DIAGNÓSTICO GERADO:
 ${diagnosis || '(não disponível)'}${historySection}${buildComparisonSection(comparisonPair)}
 
 REGRAS DO CHAT:
-- Responda SEMPRE referenciando os números reais do usuário acima
-- Use linguagem simples, sem jargão contábil (se usar termo técnico, explique entre parênteses)
-- Seja direto, encorajador e humano — como um consultor financeiro amigo
-- Se não souber algo específico do negócio, diga isso honestamente
-- Respostas curtas a médias (2-5 parágrafos no máximo)
-- Foco em orientações práticas que o dono pode aplicar essa semana
-- Lembre o usuário, quando relevante, que você é uma IA e ele deve confirmar decisões importantes com seu contador`;
+- Responda SEMPRE referenciando os números reais do usuário acima${CHAT_RESPONSE_FORMAT}`;
 }
 
 router.post('/', requireAuth, limiter, async (req, res) => {
@@ -113,22 +108,27 @@ router.post('/', requireAuth, limiter, async (req, res) => {
   req.on('close', () => ac.abort());
 
   try {
+    // Limita histórico às últimas 10 mensagens — contexto financeiro já está no system prompt
+    const trimmedHistory = (history || []).slice(-10);
     const messages = [
-      ...(history || []).map(msg => ({ role: msg.role, content: msg.content })),
+      ...trimmedHistory.map(msg => ({ role: msg.role, content: msg.content })),
       { role: 'user', content: message },
     ];
 
+    const systemText = buildSystemPrompt({
+      businessName: businessData?.businessName || 'sua empresa',
+      segment: businessData?.segment || 'outro',
+      financialData,
+      diagnosis,
+      allDiagnoses: allDiagnoses || [],
+      comparisonPair: comparisonPair || null,
+    });
+
+    // cache_control caches o system prompt por 5 min — economiza ~60-80% dos input tokens em conversas longas
     const stream = await getAnthropic().messages.stream({
       model: MODEL,
       max_tokens: 1000,
-      system: buildSystemPrompt({
-        businessName: businessData?.businessName || 'sua empresa',
-        segment: businessData?.segment || 'outro',
-        financialData,
-        diagnosis,
-        allDiagnoses: allDiagnoses || [],
-        comparisonPair: comparisonPair || null,
-      }),
+      system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages,
     }, { signal: ac.signal });
 

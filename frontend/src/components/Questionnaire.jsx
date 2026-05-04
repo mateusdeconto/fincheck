@@ -619,7 +619,7 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
                     onChange={handleSingleInput}
                     onKeyDown={handleKeyDown}
                     placeholder="0,00"
-                    className="currency-input w-44"
+                    className="currency-input flex-1 min-w-0"
                     autoFocus
                   />
                 </div>

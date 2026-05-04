@@ -146,7 +146,7 @@ function CompareMenu({ prevRec, onComparePrev, onOpenPicker, onClose }) {
   );
 }
 
-export default function History({ records, onSelect, onCompare, onNewAnalysis, onBack }) {
+export default function History({ records, onSelect, onCompare, onNewAnalysis, onOpenTracking, onBack }) {
   const [selected, setSelected]         = useState(new Set());
   const [loadingId, setLoadingId]       = useState(null);
   const [loadingMulti, setLoadingMulti] = useState(false);
@@ -231,7 +231,20 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
           <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Histórico de análises</h1>
           <p className="text-sm text-ink-400 mt-0.5">{records.length} {records.length === 1 ? 'análise' : 'análises'} salvas</p>
         </div>
-        <button onClick={onNewAnalysis} className="btn-quiet text-sm">Nova análise →</button>
+        <div className="flex items-center gap-2">
+          {onOpenTracking && (
+            <button
+              onClick={onOpenTracking}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.306a11.95 11.95 0 015.814-5.518l2.74-1.22m0 0l-5.94-2.281m5.94 2.28l-2.28 5.941" />
+              </svg>
+              Acompanhamento mensal
+            </button>
+          )}
+          <button onClick={onNewAnalysis} className="btn-quiet text-sm">Nova análise →</button>
+        </div>
       </div>
 
       {/* Barra de seleção múltipla */}

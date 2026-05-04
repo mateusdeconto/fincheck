@@ -53,15 +53,18 @@ function currentMonthValue() {
 export default function Onboarding({ onComplete, onBack }) {
   const [businessName, setBusinessName] = useState('');
   const [segment, setSegment] = useState('');
+  const [customSegment, setCustomSegment] = useState('');
   const [referenceMonth, setReferenceMonth] = useState(currentMonthValue());
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!businessName.trim() || !segment || !referenceMonth) return;
-    onComplete({ businessName: businessName.trim(), segment, referenceMonth });
+    if (segment === 'outro' && !customSegment.trim()) return;
+    onComplete({ businessName: businessName.trim(), segment, referenceMonth, customSegment: customSegment.trim() || null });
   }
 
-  const canProceed = businessName.trim().length > 0 && segment !== '' && referenceMonth !== '';
+  const canProceed = businessName.trim().length > 0 && segment !== '' && referenceMonth !== ''
+    && (segment !== 'outro' || customSegment.trim().length > 0);
   const selectedSeg = SEGMENTS.find(s => s.value === segment);
   const bench = segment ? SECTOR_BENCHMARKS[segment] : null;
   const greeting = businessName.trim().length > 1 ? `Prazer, ${businessName.trim().split(' ')[0]}.` : null;
@@ -201,6 +204,27 @@ export default function Onboarding({ onComplete, onBack }) {
               );
             })}
           </div>
+
+          {/* Campo livre para setor customizado */}
+          {segment === 'outro' && (
+            <div className="mt-4 animate-fade-in">
+              <label className="block text-sm font-semibold text-ink-800 mb-2">
+                Como se chama o seu setor?
+              </label>
+              <input
+                type="text"
+                value={customSegment}
+                onChange={e => setCustomSegment(e.target.value)}
+                placeholder="Ex: Pet shop, Marmoraria, Oficina mecânica…"
+                className="input-base text-sm py-2.5"
+                maxLength={60}
+                autoFocus
+              />
+              <p className="text-xs text-ink-400 mt-1.5">
+                Será usado para personalizar o relatório. Os benchmarks usarão médias genéricas de PMEs.
+              </p>
+            </div>
+          )}
 
           {bench && selectedSeg && (
             <div className={`mt-4 rounded-xl p-4 border-2 animate-fade-in ${selectedSeg.color}`}>

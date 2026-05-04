@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calcMetrics, formatBRL } from '../lib/metrics.js';
 import { downloadDRE, downloadPDF, currentToEntry, recordToEntry, formatReferenceMonth } from '../lib/export.js';
 import { SECTOR_BENCHMARKS } from './Onboarding.jsx';
@@ -194,6 +194,142 @@ const TONE_CLASSES = {
   loss:  { bg: 'bg-loss-50',  border: 'border-loss-200',  text: 'text-loss-700',  dot: 'bg-loss-500' },
 };
 
+const SEGMENT_NAMES = {
+  restaurante: 'Alimentação',
+  varejo:      'Varejo',
+  servicos:    'Serviços',
+  saude:       'Saúde',
+  beleza:      'Beleza',
+  tecnologia:  'Tecnologia',
+  construcao:  'Construção',
+  educacao:    'Educação',
+  industria:   'Indústria',
+  outro:       'Outro',
+};
+
+const CORRECTABLE_FIELDS = [
+  { key: 'revenue',             label: 'Receita bruta',           allowNegative: false },
+  { key: 'cogs',                label: 'Custo das vendas (CMV)',   allowNegative: false },
+  { key: 'fixedExpenses',       label: 'Despesas fixas (total)',   allowNegative: false },
+  { key: 'cashBalance',         label: 'Saldo de caixa',          allowNegative: true  },
+  { key: 'debtPayment',         label: 'Dívidas mensais (total)', allowNegative: false },
+  { key: 'accountsReceivable',  label: 'Contas a receber',        allowNegative: false },
+  { key: 'investments',         label: 'Investimentos',           allowNegative: false },
+];
+
+function CorrectDataModal({ financialData, onCorrect, onRestartAll, onClose }) {
+  const [step, setStep]           = useState('choice');
+  const [selectedField, setField] = useState(null);
+  const [inputValue, setInput]    = useState('');
+
+  function handleFieldSelect(field) {
+    setField(field);
+    setInput(String(financialData[field.key] || 0));
+    setStep('value');
+  }
+
+  function handleConfirm() {
+    const parsed = parseFloat(String(inputValue).replace(',', '.'));
+    if (isNaN(parsed)) return;
+    onCorrect({ ...financialData, [selectedField.key]: parsed });
+  }
+
+  const title = step === 'choice' ? 'Corrigir dado' : step === 'field' ? 'Qual dado está errado?' : `Corrigir: ${selectedField?.label}`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink-900/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-slide-up">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-ink-100">
+          <h3 className="font-bold text-ink-900 text-base">{title}</h3>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center text-ink-400 hover:text-ink-700 rounded-lg text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-5 py-5">
+          {step === 'choice' && (
+            <div className="space-y-2.5">
+              <p className="text-sm text-ink-500 mb-4">O que você quer fazer?</p>
+              <button
+                onClick={() => setStep('field')}
+                className="w-full flex items-center gap-3 p-4 border-2 border-ink-200 rounded-xl hover:border-brand-400 hover:bg-brand-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-ink-800">Corrigir um dado específico</p>
+                  <p className="text-xs text-ink-500 mt-0.5">Troca apenas o valor que está errado</p>
+                </div>
+              </button>
+              <button
+                onClick={onRestartAll}
+                className="w-full flex items-center gap-3 p-4 border-2 border-ink-200 rounded-xl hover:border-ink-400 hover:bg-ink-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-lg bg-ink-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-ink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-ink-800">Refazer o questionário todo</p>
+                  <p className="text-xs text-ink-500 mt-0.5">Começa do zero com novos valores</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {step === 'field' && (
+            <div className="space-y-1.5 max-h-80 overflow-y-auto">
+              {CORRECTABLE_FIELDS.map(field => (
+                <button
+                  key={field.key}
+                  onClick={() => handleFieldSelect(field)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-ink-200 hover:border-brand-400 hover:bg-brand-50 transition-all text-left"
+                >
+                  <span className="text-sm font-medium text-ink-700">{field.label}</span>
+                  <span className="text-sm font-mono text-ink-500">{formatBRL(financialData[field.key] || 0)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === 'value' && selectedField && (
+            <div className="space-y-4">
+              <div className="bg-ink-50 rounded-lg px-4 py-3 text-sm text-ink-600">
+                Valor atual: <strong className="font-mono">{formatBRL(financialData[selectedField.key] || 0)}</strong>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-ink-700 mb-2 block">Novo valor (R$)</label>
+                <input
+                  type="number"
+                  value={inputValue}
+                  onChange={e => setInput(e.target.value)}
+                  className="input-base text-base py-3 font-mono"
+                  placeholder="0.00"
+                  autoFocus
+                  step="0.01"
+                />
+                {selectedField.allowNegative && (
+                  <p className="text-xs text-ink-400 mt-1">Pode ser negativo. Ex: -1500</p>
+                )}
+              </div>
+              <button
+                onClick={handleConfirm}
+                disabled={inputValue === '' || isNaN(parseFloat(inputValue))}
+                className="btn-primary w-full disabled:opacity-50"
+              >
+                Corrigir e reanalisar
+              </button>
+              <button onClick={() => setStep('field')} className="btn-back w-full">← Escolher outro campo</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Componente Premium: Benchmark SEBRAE + Macro BCB ───────────────────────
 const SECTOR_EXTRA = {
   restaurante: { fixedCostPct: [30, 42], laborPct: [28, 38], rentPct: [8, 12],  breakEvenPct: [68, 82], survivalRate2y: 52 },
@@ -208,9 +344,10 @@ const SECTOR_EXTRA = {
   outro:       { fixedCostPct: [20, 35], laborPct: [25, 40], rentPct: [3, 8],   breakEvenPct: [62, 80], survivalRate2y: 52 },
 };
 
-function BenchmarkPremium({ macroData, segment, plan, onUpgrade }) {
+function BenchmarkPremium({ macroData, segment, sectorLabel, plan, onUpgrade }) {
   const isPaid = plan === 'paid';
   const extra  = SECTOR_EXTRA[segment] || SECTOR_EXTRA.outro;
+  const title  = `Benchmark — ${sectorLabel}`;
 
   const minutesAgo = macroData?.cachedAt
     ? Math.floor((Date.now() - macroData.cachedAt) / 60000)
@@ -306,7 +443,7 @@ function BenchmarkPremium({ macroData, segment, plan, onUpgrade }) {
         {/* Preview borrado */}
         <div className="blur-sm pointer-events-none select-none">
           <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-3">
-            Benchmark Premium
+            {title}
           </p>
           <div className="grid grid-cols-2 gap-2 mb-4">
             {['Desp. fixas', 'Pessoal', 'Aluguel', 'P. equilíbrio'].map(l => (
@@ -330,9 +467,9 @@ function BenchmarkPremium({ macroData, segment, plan, onUpgrade }) {
           <svg className="w-5 h-5 text-ink-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
           </svg>
-          <p className="text-sm font-bold text-ink-800 mb-1">Benchmark Premium</p>
+          <p className="text-sm font-bold text-ink-800 mb-1">{title}</p>
           <p className="text-[11px] text-ink-500 mb-3 text-center px-6 leading-relaxed">
-            Dados setoriais SEBRAE + Selic, IPCA e câmbio ao vivo do Banco Central
+            Dados setoriais SEBRAE + Selic, IPCA e câmbio ao vivo — disponível no Pro
           </p>
           <button
             onClick={onUpgrade}
@@ -348,24 +485,39 @@ function BenchmarkPremium({ macroData, segment, plan, onUpgrade }) {
   return (
     <div className="card p-5">
       <p className="text-xs font-semibold text-ink-400 uppercase tracking-wider mb-4">
-        Benchmark Premium
+        {title}
       </p>
       <CardContent />
     </div>
   );
 }
 
-export default function Diagnosis({ businessData, financialData, diagnosis, allDiagnoses = [], plan = 'free', user, macroData = null, onOpenChat, onOpenTracking, onOpenHistory, onRestart }) {
+export default function Diagnosis({ businessData, financialData, diagnosis, allDiagnoses = [], plan = 'free', user, macroData = null, onOpenChat, onOpenTracking, onOpenHistory, onCorrectData, onRestart }) {
   const renderedHtml  = useMemo(() => renderMarkdown(diagnosis),      [diagnosis]);
   const healthStatus  = useMemo(() => extractHealthStatus(diagnosis), [diagnosis]);
   const metrics       = useMemo(() => calcMetrics(financialData),     [financialData]);
   const projection    = useMemo(() => calcProjection(financialData, metrics), [financialData, metrics]);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting]       = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [emailSent, setEmailSent]       = useState(false);
+  const [showUpgrade, setShowUpgrade]   = useState(false);
+  const [showCorrect, setShowCorrect]   = useState(false);
+  const [localMacro, setLocalMacro]     = useState(macroData);
   const isPaid = plan === 'paid';
+
+  const sectorLabel = (businessData.segment === 'outro' && businessData.customSegment)
+    ? businessData.customSegment
+    : (SEGMENT_NAMES[businessData.segment] || businessData.segment);
+
+  // Busca macro quando não veio pelo SSE (ex: diagnóstico carregado do histórico)
+  useEffect(() => {
+    if (localMacro || plan !== 'paid') return;
+    fetch('/api/macro')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setLocalMacro(data); })
+      .catch(() => {});
+  }, [plan]);
 
   const netProfitPositive = metrics.netProfit >= 0;
   const healthTone = healthStatus ? TONE_CLASSES[healthStatus.tone] : TONE_CLASSES.brand;
@@ -446,7 +598,7 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
           {businessData.businessName}
         </h1>
         <p className="text-ink-500 text-sm mt-0.5 capitalize">
-          {businessData.segment}
+          {sectorLabel}
           {businessData.referenceMonth && (
             <span className="ml-2 text-ink-400">· {formatReferenceMonth(businessData.referenceMonth)}</span>
           )}
@@ -527,10 +679,11 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
       {/* Benchmark */}
       <BenchmarkChart metrics={metrics} segment={businessData.segment} />
 
-      {/* Benchmark Premium — SEBRAE + BCB */}
+      {/* Benchmark — SEBRAE + BCB */}
       <BenchmarkPremium
-        macroData={macroData}
+        macroData={localMacro}
         segment={businessData.segment}
+        sectorLabel={sectorLabel}
         plan={plan}
         onUpgrade={() => setShowUpgrade(true)}
       />
@@ -706,9 +859,26 @@ export default function Diagnosis({ businessData, financialData, diagnosis, allD
         <button onClick={onRestart} className="btn-back">
           Começar novo diagnóstico
         </button>
+        {onCorrectData && (
+          <button
+            onClick={() => setShowCorrect(true)}
+            className="w-full text-center text-xs text-ink-400 hover:text-brand-600 transition-colors py-1"
+          >
+            Escreveu algum dado errado? <span className="underline">Corrija aqui</span>
+          </button>
+        )}
       </div>
 
       <p className="text-center text-xs text-ink-400 pb-4">FinCheck — diagnóstico em linguagem de dono</p>
+
+      {showCorrect && onCorrectData && (
+        <CorrectDataModal
+          financialData={financialData}
+          onCorrect={data => { setShowCorrect(false); onCorrectData(data); }}
+          onRestartAll={() => { setShowCorrect(false); onRestart(); }}
+          onClose={() => setShowCorrect(false)}
+        />
+      )}
 
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
     </div>

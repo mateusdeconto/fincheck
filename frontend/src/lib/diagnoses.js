@@ -5,7 +5,7 @@ export async function saveDiagnosis({ userId, businessData, financialData, diagn
     user_id: userId,
     business_name: businessData.businessName,
     segment: businessData.segment,
-    financial_data: financialData,
+    financial_data: { ...financialData, _customSegment: businessData.customSegment || null },
     diagnosis_text: diagnosisText,
   });
   if (error) console.error('[saveDiagnosis]', error.message);

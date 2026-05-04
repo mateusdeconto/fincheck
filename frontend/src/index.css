@@ -141,7 +141,7 @@
   }
 
   .item-value-input {
-    @apply w-24 text-right text-sm font-semibold text-ink-800 font-mono
+    @apply w-32 text-right text-sm font-semibold text-ink-800 font-mono
            bg-transparent outline-none placeholder:text-ink-300;
   }
 
