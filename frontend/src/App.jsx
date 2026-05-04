@@ -80,6 +80,7 @@ export default function App() {
   const [previousRecord, setPreviousRecord]   = useState(null);
   const [allDiagnoses, setAllDiagnoses]       = useState([]);
   const [comparisonPair, setComparisonPair]   = useState(null);
+  const [chatOrigin, setChatOrigin]           = useState(STEPS.DIAGNOSIS);
   const [plan, setPlan]                       = useState('free');
 
   useEffect(() => {
@@ -270,6 +271,8 @@ export default function App() {
               recordA={comparisonPair[0]}
               recordB={comparisonPair[1]}
               onBack={() => setStep(STEPS.HISTORY)}
+              plan={plan}
+              onOpenChat={() => { setChatOrigin(STEPS.COMPARISON); setStep(STEPS.CHAT); }}
             />
           )}
 
@@ -307,7 +310,7 @@ export default function App() {
               allDiagnoses={allDiagnoses}
               plan={plan}
               user={user}
-              onOpenChat={() => setStep(STEPS.CHAT)}
+              onOpenChat={() => { setChatOrigin(STEPS.DIAGNOSIS); setStep(STEPS.CHAT); }}
               onOpenTracking={() => setStep(STEPS.TRACKING)}
               onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}
               onRestart={handleRestart}
@@ -329,8 +332,9 @@ export default function App() {
               financialData={financialData}
               diagnosis={diagnosis}
               allDiagnoses={allDiagnoses}
+              comparisonPair={comparisonPair}
               accessToken={accessToken}
-              onBack={() => setStep(STEPS.DIAGNOSIS)}
+              onBack={() => setStep(chatOrigin)}
             />
           )}
         </Suspense>

@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { calcMetrics, formatBRL } from '../lib/metrics.js';
+import UpgradeModal from './UpgradeModal.jsx';
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -32,9 +33,11 @@ function Cell({ value, highlight }) {
   );
 }
 
-export default function Comparison({ recordA, recordB, onBack }) {
+export default function Comparison({ recordA, recordB, onBack, onOpenChat, plan = 'free' }) {
   const mA = useMemo(() => calcMetrics(recordA.financial_data), [recordA]);
   const mB = useMemo(() => calcMetrics(recordB.financial_data), [recordB]);
+  const isPaid = plan === 'paid';
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const rows = [
     { label: 'Receita Bruta',     a: formatBRL(mA.revenue),       b: formatBRL(mB.revenue),       delta: <Delta a={mA.revenue} b={mB.revenue} />,                         highlight: false },
@@ -105,7 +108,26 @@ export default function Comparison({ recordA, recordB, onBack }) {
         </div>
       </div>
 
+      {/* Consultor IA */}
+      <button
+        onClick={isPaid ? onOpenChat : () => setShowUpgrade(true)}
+        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-colors ${isPaid ? 'border-ink-200 text-ink-700 bg-white hover:bg-ink-50' : 'border-ink-200 text-ink-400 bg-white opacity-80'}`}
+      >
+        {!isPaid && (
+          <svg className="w-3.5 h-3.5 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        )}
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+        </svg>
+        Perguntar à IA sobre esta comparação
+        {!isPaid && <span className="ml-auto text-[10px] font-bold bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded">PRO</span>}
+      </button>
+
       <button onClick={onBack} className="btn-back w-full">← Voltar ao histórico</button>
+
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} />}
     </div>
   );
 }

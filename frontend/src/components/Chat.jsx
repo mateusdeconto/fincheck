@@ -8,11 +8,14 @@ const SUGGESTED_QUESTIONS = [
   'Como reduzir meus custos fixos?',
 ];
 
-export default function Chat({ businessData, financialData, diagnosis, allDiagnoses = [], accessToken, onBack }) {
+export default function Chat({ businessData, financialData, diagnosis, allDiagnoses = [], comparisonPair = null, accessToken, onBack }) {
+  const isComparisonChat = !!comparisonPair;
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Olá. Já analisei os números de **${businessData.businessName}**. Pode me perguntar qualquer coisa sobre o diagnóstico ou sobre o financeiro do seu negócio — vou responder com base nos seus dados reais.`,
+      content: isComparisonChat
+        ? `Olá! Tenho os dados completos da comparação entre os dois períodos de **${comparisonPair[0].business_name}**. Me pergunte o que quiser sobre as variações, tendências ou o que fazer a seguir.`
+        : `Olá. Já analisei os números de **${businessData.businessName}**. Pode me perguntar qualquer coisa sobre o diagnóstico ou sobre o financeiro do seu negócio — vou responder com base nos seus dados reais.`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -51,6 +54,7 @@ export default function Chat({ businessData, financialData, diagnosis, allDiagno
           financialData,
           diagnosis,
           allDiagnoses: allDiagnoses.slice(0, 6),
+          comparisonPair: comparisonPair || null,
         }),
       });
 

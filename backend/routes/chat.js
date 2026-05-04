@@ -20,7 +20,39 @@ function formatBRL(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 
-function buildSystemPrompt({ businessName, segment, financialData, diagnosis, allDiagnoses = [] }) {
+function buildComparisonSection(comparisonPair) {
+  if (!comparisonPair || comparisonPair.length < 2) return '';
+  const [a, b] = comparisonPair;
+  const mA = calcMetrics(a.financial_data);
+  const mB = calcMetrics(b.financial_data);
+  const dateA = a.financial_data?.referenceMonth || new Date(a.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const dateB = b.financial_data?.referenceMonth || new Date(b.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+  return `
+
+COMPARAÇÃO ENTRE PERÍODOS (o usuário está analisando esta comparação agora):
+Período MAIS RECENTE (${dateA}):
+- Receita: ${formatBRL(mA.revenue)} | Lucro Líquido: ${formatBRL(mA.netProfit)} (${mA.netMargin.toFixed(1)}%)
+- Margem Bruta: ${mA.grossMargin.toFixed(1)}% | EBITDA: ${formatBRL(mA.ebitda)}
+- Despesas Fixas: ${formatBRL(mA.fixedExpenses)} | Caixa: ${formatBRL(mA.cashBalance)}
+- Ponto de Equilíbrio: ${formatBRL(mA.breakEven)}
+
+Período ANTERIOR (${dateB}):
+- Receita: ${formatBRL(mB.revenue)} | Lucro Líquido: ${formatBRL(mB.netProfit)} (${mB.netMargin.toFixed(1)}%)
+- Margem Bruta: ${mB.grossMargin.toFixed(1)}% | EBITDA: ${formatBRL(mB.ebitda)}
+- Despesas Fixas: ${formatBRL(mB.fixedExpenses)} | Caixa: ${formatBRL(mB.cashBalance)}
+- Ponto de Equilíbrio: ${formatBRL(mB.breakEven)}
+
+VARIAÇÕES (mais recente vs anterior):
+- Receita: ${formatBRL(mA.revenue - mB.revenue)} (${mB.revenue > 0 ? (((mA.revenue - mB.revenue) / mB.revenue) * 100).toFixed(1) : '—'}%)
+- Lucro Líquido: ${formatBRL(mA.netProfit - mB.netProfit)}
+- Margem Líquida: ${(mA.netMargin - mB.netMargin).toFixed(1)}pp
+- Despesas Fixas: ${formatBRL(mA.fixedExpenses - mB.fixedExpenses)}
+
+Foque sua análise nesta comparação quando o usuário perguntar sobre evolução, tendências ou diferenças entre períodos.`;
+}
+
+function buildSystemPrompt({ businessName, segment, financialData, diagnosis, allDiagnoses = [], comparisonPair = null }) {
   const m = calcMetrics(financialData);
 
   let historySection = '';
@@ -56,7 +88,7 @@ NÚMEROS CALCULADOS (use estes valores, não recalcule):
 - Ponto de Equilíbrio: ${formatBRL(m.breakEven)}
 
 DIAGNÓSTICO GERADO:
-${diagnosis || '(não disponível)'}${historySection}
+${diagnosis || '(não disponível)'}${historySection}${buildComparisonSection(comparisonPair)}
 
 REGRAS DO CHAT:
 - Responda SEMPRE referenciando os números reais do usuário acima
@@ -69,7 +101,7 @@ REGRAS DO CHAT:
 }
 
 router.post('/', requireAuth, limiter, async (req, res) => {
-  const { message, history, businessData, financialData, diagnosis, allDiagnoses } = req.body || {};
+  const { message, history, businessData, financialData, diagnosis, allDiagnoses, comparisonPair } = req.body || {};
 
   if (!message || !financialData) {
     return res.status(400).json({ error: 'Mensagem e dados financeiros são obrigatórios.' });
@@ -94,6 +126,7 @@ router.post('/', requireAuth, limiter, async (req, res) => {
         financialData,
         diagnosis,
         allDiagnoses: allDiagnoses || [],
+        comparisonPair: comparisonPair || null,
       }),
       messages,
     }, { signal: ac.signal });
