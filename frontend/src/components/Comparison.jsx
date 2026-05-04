@@ -2,8 +2,14 @@ import { useMemo, useState } from 'react';
 import { calcMetrics, formatBRL } from '../lib/metrics.js';
 import UpgradeModal from './UpgradeModal.jsx';
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+function getLabel(record) {
+  const refMonth = record.financial_data?.referenceMonth;
+  if (refMonth) {
+    const [year, month] = refMonth.split('-');
+    return new Date(Number(year), Number(month) - 1, 1)
+      .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+  return new Date(record.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function Delta({ a, b, format = 'brl', invertColor = false }) {
@@ -87,10 +93,10 @@ export default function Comparison({ recordA, recordB, onBack, onOpenChat, plan 
               <tr className="bg-ink-50 border-b border-ink-200">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-ink-500 uppercase tracking-wider">Indicador</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-ink-900 uppercase tracking-wider">
-                  {formatDate(recordA.created_at)}
+                  {getLabel(recordA)}
                   <span className="ml-1.5 text-[9px] font-bold bg-ink-900 text-white px-1.5 py-0.5 rounded-full">novo</span>
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-500 uppercase tracking-wider">{formatDate(recordB.created_at)}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-500 uppercase tracking-wider">{getLabel(recordB)}</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-ink-500 uppercase tracking-wider">Variação</th>
               </tr>
             </thead>

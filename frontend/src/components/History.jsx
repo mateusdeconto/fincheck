@@ -41,10 +41,108 @@ function recordLabel(rec) {
     : formatDate(rec.created_at);
 }
 
+/* ── Modal: escolher período ────────────────────────────────────────────── */
+function PeriodPickerModal({ baseRecord, records, onConfirm, onClose }) {
+  const [selectedId, setSelectedId] = useState(null);
+  const others = records.filter(r => r.id !== baseRecord.id);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in">
+        <div className="px-5 pt-5 pb-3 border-b border-ink-100">
+          <h3 className="font-bold text-ink-900 text-base">Escolher período para comparar</h3>
+          <p className="text-xs text-ink-400 mt-0.5">
+            Base: <span className="font-semibold text-ink-700">{recordLabel(baseRecord)}</span>
+          </p>
+        </div>
+
+        <div className="overflow-y-auto max-h-72 divide-y divide-ink-100">
+          {others.map(rec => {
+            const m = calcMetrics(rec.financial_data);
+            const isChecked = selectedId === rec.id;
+            return (
+              <label
+                key={rec.id}
+                className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors ${isChecked ? 'bg-brand-50' : 'hover:bg-ink-50'}`}
+              >
+                <input
+                  type="radio"
+                  name="period"
+                  checked={isChecked}
+                  onChange={() => setSelectedId(rec.id)}
+                  className="w-4 h-4 accent-ink-900 flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink-800">{recordLabel(rec)}</p>
+                  <p className="text-xs text-ink-400 font-mono">
+                    Receita {formatBRL(m.revenue)} · Lucro {formatBRL(m.netProfit)}
+                  </p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-2 p-4 border-t border-ink-100">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 text-sm font-semibold text-ink-600 bg-ink-50 border border-ink-200 rounded-xl hover:bg-ink-100 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={() => {
+              const rec = records.find(r => r.id === selectedId);
+              if (rec) onConfirm(baseRecord, rec);
+            }}
+            disabled={!selectedId}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-ink-900 rounded-xl hover:bg-ink-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Comparar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dropdown do botão "Comparar" ───────────────────────────────────────── */
+function CompareMenu({ prevRec, onComparePrev, onOpenPicker, onClose }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-10" onClick={onClose} />
+      <div className="absolute right-0 bottom-full mb-1.5 z-20 bg-white border border-ink-200 rounded-xl shadow-lg overflow-hidden w-52 animate-fade-in">
+        {prevRec && (
+          <button
+            onClick={onComparePrev}
+            className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors text-left"
+          >
+            <svg className="w-4 h-4 text-brand-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 3M21 7.5H7.5" />
+            </svg>
+            Com o período anterior
+          </button>
+        )}
+        <button
+          onClick={onOpenPicker}
+          className={`w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-ink-700 hover:bg-ink-50 transition-colors text-left ${prevRec ? 'border-t border-ink-100' : ''}`}
+        >
+          <svg className="w-4 h-4 text-ink-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h4.5M3 6.75l1.5 1.5L6 6.75M3 12l1.5 1.5L6 12m-3 5.25l1.5 1.5L6 17.25" />
+          </svg>
+          Escolher período…
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default function History({ records, onSelect, onCompare, onNewAnalysis, onBack }) {
-  const [selected, setSelected]       = useState(new Set());
-  const [loadingId, setLoadingId]     = useState(null); // 'pdf-<id>' | 'dre-<id>'
+  const [selected, setSelected]         = useState(new Set());
+  const [loadingId, setLoadingId]       = useState(null);
   const [loadingMulti, setLoadingMulti] = useState(false);
+  const [openMenuId, setOpenMenuId]     = useState(null);
+  const [pickerBase, setPickerBase]     = useState(null);
 
   function toggleSelect(id) {
     setSelected(prev => {
@@ -137,7 +235,9 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
             className="w-4 h-4 rounded accent-ink-900"
           />
           <span className="text-sm font-medium text-ink-700">
-            {selectedCount === 0 ? 'Selecionar para DRE comparativa' : `${selectedCount} ${selectedCount === 1 ? 'mês selecionado' : 'meses selecionados'}`}
+            {selectedCount === 0
+              ? 'Selecionar para DRE comparativa'
+              : `${selectedCount} ${selectedCount === 1 ? 'mês selecionado' : 'meses selecionados'}`}
           </span>
         </label>
 
@@ -161,11 +261,12 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
 
       {/* Cards */}
       {records.map((rec, idx) => {
-        const m      = calcMetrics(rec.financial_data);
-        const prev   = records[idx + 1];
-        const prevM  = prev ? calcMetrics(prev.financial_data) : null;
-        const health = extractHealth(rec.diagnosis_text);
+        const m          = calcMetrics(rec.financial_data);
+        const prev       = records[idx + 1] || null;
+        const prevM      = prev ? calcMetrics(prev.financial_data) : null;
+        const health     = extractHealth(rec.diagnosis_text);
         const isSelected = selected.has(rec.id);
+        const hasOthers  = records.length > 1;
 
         return (
           <div
@@ -221,14 +322,34 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
               >
                 Ver diagnóstico
               </button>
-              {idx < records.length - 1 && (
-                <button
-                  onClick={() => onCompare(rec, records[idx + 1])}
-                  className="flex-1 min-w-[110px] py-2 text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors"
-                >
-                  Comparar com anterior
-                </button>
+
+              {/* Botão Comparar */}
+              {hasOthers && (
+                <div className="relative flex-1 min-w-[90px]">
+                  <button
+                    onClick={() => setOpenMenuId(openMenuId === rec.id ? null : rec.id)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-brand-700 bg-brand-50 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors"
+                  >
+                    Comparar
+                    <svg
+                      className={`w-3 h-3 transition-transform ${openMenuId === rec.id ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+
+                  {openMenuId === rec.id && (
+                    <CompareMenu
+                      prevRec={prev}
+                      onComparePrev={() => { setOpenMenuId(null); onCompare(rec, prev); }}
+                      onOpenPicker={() => { setOpenMenuId(null); setPickerBase(rec); }}
+                      onClose={() => setOpenMenuId(null)}
+                    />
+                  )}
+                </div>
               )}
+
               <button
                 onClick={() => handleDownloadPDF(rec)}
                 disabled={loadingId === `pdf-${rec.id}`}
@@ -261,6 +382,16 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
           </div>
         );
       })}
+
+      {/* Modal de escolha de período */}
+      {pickerBase && (
+        <PeriodPickerModal
+          baseRecord={pickerBase}
+          records={records}
+          onConfirm={(a, b) => { setPickerBase(null); onCompare(a, b); }}
+          onClose={() => setPickerBase(null)}
+        />
+      )}
 
       <button onClick={onBack} className="btn-back w-full">← Voltar</button>
     </div>
