@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '../lib/supabase.js';
 
 const LOADING_MESSAGES = [
   'Lendo seus números…',
@@ -39,11 +40,15 @@ export default function Loading({ businessData, financialData, accessToken, onCo
     const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
+      // Sempre busca o token mais recente para evitar expiração
+      const { data: sessionData } = await supabase.auth.getSession();
+      const freshToken = sessionData?.session?.access_token || accessToken;
+
       const response = await fetch('/api/diagnose', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}),
         },
         body: JSON.stringify({ ...businessData, ...financialData }),
         signal: controller.signal,
