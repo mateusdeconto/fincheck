@@ -82,6 +82,7 @@ export default function App() {
   const [comparisonPair, setComparisonPair]   = useState(null);
   const [chatOrigin, setChatOrigin]           = useState(STEPS.DIAGNOSIS);
   const [plan, setPlan]                       = useState('free');
+  const [macroData, setMacroData]             = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -155,8 +156,9 @@ export default function App() {
     setStep(STEPS.LOADING);
   }
 
-  async function handleDiagnosisComplete(text) {
+  async function handleDiagnosisComplete(text, macro) {
     setDiagnosis(text);
+    if (macro) setMacroData(macro);
     setStep(STEPS.DIAGNOSIS);
     if (user) {
       await saveDiagnosis({ userId: user.id, businessData, financialData, diagnosisText: text });
@@ -309,6 +311,7 @@ export default function App() {
               allDiagnoses={allDiagnoses}
               plan={plan}
               user={user}
+              macroData={macroData}
               onOpenChat={() => { setChatOrigin(STEPS.DIAGNOSIS); setStep(STEPS.CHAT); }}
               onOpenTracking={() => setStep(STEPS.TRACKING)}
               onOpenHistory={allDiagnoses.length > 0 ? () => setStep(STEPS.HISTORY) : null}

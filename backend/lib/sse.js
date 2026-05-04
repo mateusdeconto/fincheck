@@ -22,6 +22,9 @@ export function openSSE(res) {
     sendText: (text) => {
       if (!res.writableEnded) res.write(`data: ${JSON.stringify({ text })}\n\n`);
     },
+    sendMeta: (payload) => {
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    },
     sendError: (message) => {
       if (!res.writableEnded) res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     },

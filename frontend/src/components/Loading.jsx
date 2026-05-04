@@ -62,6 +62,7 @@ export default function Loading({ businessData, financialData, accessToken, onCo
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullText = '';
+      let capturedMacro = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -73,13 +74,14 @@ export default function Loading({ businessData, financialData, accessToken, onCo
           const data = line.slice(6).trim();
           if (data === '[DONE]') {
             clearTimeout(timeout);
-            if (fullText) onComplete(fullText);
+            if (fullText) onComplete(fullText, capturedMacro);
             else throw new Error('Resposta vazia da IA. Tente novamente.');
             return;
           }
           try {
             const parsed = JSON.parse(data);
             if (parsed.error) throw new Error(parsed.error);
+            if (parsed.macro_data) { capturedMacro = parsed.macro_data; continue; }
             if (parsed.text) fullText += parsed.text;
           } catch (parseErr) {
             if (parseErr.message && !parseErr.message.toLowerCase().includes('json')) throw parseErr;
@@ -88,7 +90,7 @@ export default function Loading({ businessData, financialData, accessToken, onCo
       }
 
       clearTimeout(timeout);
-      if (fullText) onComplete(fullText);
+      if (fullText) onComplete(fullText, capturedMacro);
       else throw new Error('Conexão interrompida antes do fim. Tente novamente.');
     } catch (err) {
       clearTimeout(timeout);

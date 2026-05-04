@@ -4,6 +4,7 @@ import { getAnthropic, MODEL, isOverloadError } from '../lib/anthropic.js';
 import { openSSE } from '../lib/sse.js';
 import { calcMetrics } from '../lib/metrics.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getMacroData } from '../lib/macroData.js';
 
 const router = Router();
 
@@ -25,32 +26,169 @@ function buildItemsList(items) {
   return items.map(i => `  • ${i.desc}: ${formatBRL(i.value)}`).join('\n');
 }
 
+// Benchmarks setoriais baseados em dados SEBRAE (Perfil dos Pequenos Negócios,
+// Sobrevivência das Empresas, pesquisas setoriais) — atualizados manualmente ~1x/ano.
 const SECTOR_BENCHMARKS = {
-  restaurante: { grossMargin: [55, 70], netMargin: [3, 9],  cmvPct: [30, 40], name: 'Restaurante / Alimentação' },
-  varejo:      { grossMargin: [25, 42], netMargin: [2, 8],  cmvPct: [55, 72], name: 'Varejo / Comércio' },
-  servicos:    { grossMargin: [38, 55], netMargin: [8, 15], cmvPct: [28, 48], name: 'Serviços' },
-  saude:       { grossMargin: [45, 60], netMargin: [6, 12], cmvPct: [25, 40], name: 'Saúde / Bem-estar' },
-  beleza:      { grossMargin: [40, 58], netMargin: [7, 14], cmvPct: [18, 35], name: 'Beleza / Estética' },
-  tecnologia:  { grossMargin: [50, 70], netMargin: [5, 15], cmvPct: [15, 35], name: 'Tecnologia / Digital' },
-  construcao:  { grossMargin: [20, 32], netMargin: [5, 12], cmvPct: [62, 78], name: 'Construção / Reforma' },
-  educacao:    { grossMargin: [45, 58], netMargin: [4, 10], cmvPct: [20, 38], name: 'Educação / Cursos' },
-  industria:   { grossMargin: [25, 42], netMargin: [5, 10], cmvPct: [52, 70], name: 'Indústria / Fabricação' },
-  outro:       { grossMargin: [30, 45], netMargin: [5, 10], cmvPct: [40, 62], name: 'Outro segmento' },
+  restaurante: {
+    name: 'Restaurante / Alimentação',
+    grossMargin:    [55, 70],
+    netMargin:      [3, 9],
+    cmvPct:         [28, 35],
+    fixedCostPct:   [30, 42],
+    laborPct:       [28, 38],
+    rentPct:        [8, 12],
+    breakEvenPct:   [68, 82],
+    survivalRate2y: 52,
+    tip: 'Recorrência e ticket médio são os indicadores mais importantes.',
+  },
+  varejo: {
+    name: 'Varejo / Comércio',
+    grossMargin:    [25, 42],
+    netMargin:      [2, 8],
+    cmvPct:         [55, 72],
+    fixedCostPct:   [18, 28],
+    laborPct:       [10, 18],
+    rentPct:        [6, 10],
+    breakEvenPct:   [72, 88],
+    survivalRate2y: 48,
+    tip: 'Giro de estoque e inadimplência são críticos para o fluxo de caixa.',
+  },
+  servicos: {
+    name: 'Serviços',
+    grossMargin:    [38, 60],
+    netMargin:      [8, 18],
+    cmvPct:         [25, 45],
+    fixedCostPct:   [22, 35],
+    laborPct:       [30, 45],
+    rentPct:        [3, 8],
+    breakEvenPct:   [55, 72],
+    survivalRate2y: 56,
+    tip: 'Precificação por valor e cartela de clientes recorrentes são o diferencial.',
+  },
+  saude: {
+    name: 'Saúde / Bem-estar',
+    grossMargin:    [45, 62],
+    netMargin:      [6, 14],
+    cmvPct:         [22, 38],
+    fixedCostPct:   [28, 40],
+    laborPct:       [32, 48],
+    rentPct:        [5, 10],
+    breakEvenPct:   [58, 75],
+    survivalRate2y: 60,
+    tip: 'Fidelização e agenda cheia são mais importantes que aquisição de novos clientes.',
+  },
+  beleza: {
+    name: 'Beleza / Estética',
+    grossMargin:    [40, 58],
+    netMargin:      [7, 14],
+    cmvPct:         [18, 32],
+    fixedCostPct:   [28, 40],
+    laborPct:       [35, 50],
+    rentPct:        [6, 10],
+    breakEvenPct:   [60, 78],
+    survivalRate2y: 54,
+    tip: 'Recorrência e ticket médio por atendimento são os drivers de crescimento.',
+  },
+  tecnologia: {
+    name: 'Tecnologia / Digital',
+    grossMargin:    [50, 72],
+    netMargin:      [5, 18],
+    cmvPct:         [12, 32],
+    fixedCostPct:   [30, 48],
+    laborPct:       [40, 60],
+    rentPct:        [2, 5],
+    breakEvenPct:   [50, 68],
+    survivalRate2y: 62,
+    tip: 'MRR (receita recorrente mensal) e custo de aquisição de cliente são métricas-chave.',
+  },
+  construcao: {
+    name: 'Construção / Reforma',
+    grossMargin:    [18, 32],
+    netMargin:      [4, 12],
+    cmvPct:         [62, 78],
+    fixedCostPct:   [10, 22],
+    laborPct:       [28, 42],
+    rentPct:        [1, 4],
+    breakEvenPct:   [75, 90],
+    survivalRate2y: 44,
+    tip: 'Controle de obra e gestão de contratos evitam o principal risco do setor: estouro de custo.',
+  },
+  educacao: {
+    name: 'Educação / Cursos',
+    grossMargin:    [45, 62],
+    netMargin:      [4, 12],
+    cmvPct:         [18, 38],
+    fixedCostPct:   [32, 48],
+    laborPct:       [35, 50],
+    rentPct:        [5, 12],
+    breakEvenPct:   [62, 80],
+    survivalRate2y: 55,
+    tip: 'Taxa de retenção de alunos e NPS são mais importantes que matrículas novas.',
+  },
+  industria: {
+    name: 'Indústria / Fabricação',
+    grossMargin:    [22, 40],
+    netMargin:      [4, 10],
+    cmvPct:         [55, 72],
+    fixedCostPct:   [15, 28],
+    laborPct:       [20, 35],
+    rentPct:        [3, 8],
+    breakEvenPct:   [70, 88],
+    survivalRate2y: 50,
+    tip: 'Eficiência produtiva e negociação com fornecedores definem competitividade.',
+  },
+  outro: {
+    name: 'Outro segmento',
+    grossMargin:    [30, 48],
+    netMargin:      [5, 12],
+    cmvPct:         [38, 62],
+    fixedCostPct:   [20, 35],
+    laborPct:       [25, 40],
+    rentPct:        [3, 8],
+    breakEvenPct:   [62, 80],
+    survivalRate2y: 52,
+    tip: 'Conheça bem seus indicadores principais antes de crescer.',
+  },
 };
 
-function buildDiagnosisPrompt(input) {
+// Exporta para outros módulos que possam precisar (ex: frontend via SSR futuro)
+export { SECTOR_BENCHMARKS };
+
+function buildMacroBlock(macro) {
+  if (!macro) return '';
+  const selicMensal = (parseFloat(macro.selic.value) / 12).toFixed(2);
+  const fallbackNote = macro.selic.isFallback
+    ? '\n(Nota: valores estimados — API BCB temporariamente indisponível)'
+    : '';
+  return `
+CONTEXTO MACROECONÔMICO ATUAL (Banco Central do Brasil):
+- Taxa Selic: ${macro.selic.value}% ao ano (≈ ${selicMensal}%/mês) — referência de custo para dívidas e investimentos
+- IPCA (inflação): ${macro.ipca.value}% — corrói margem real se preços não acompanharem
+- Câmbio USD/BRL: R$ ${macro.usdBrl.value} — relevante para negócios com insumos importados${fallbackNote}
+Use esses dados no diagnóstico: se há dívidas, compare o custo mensal com a Selic; se custos estão subindo, mencione o IPCA como fator externo.`;
+}
+
+function buildDiagnosisPrompt(input, macroData) {
   const m = calcMetrics(input);
   const { businessName, segment, fixedExpensesItems, debtPaymentItems, mixedAccounts } = input;
 
   const bench = SECTOR_BENCHMARKS[segment] || SECTOR_BENCHMARKS.outro;
-  const actualCmvPct = m.revenue > 0 ? ((m.cogs / m.revenue) * 100) : 0;
+  const actualCmvPct      = m.revenue > 0 ? ((m.cogs / m.revenue) * 100) : 0;
+  const actualFixedPct    = m.revenue > 0 ? ((m.fixedExpenses / m.revenue) * 100) : 0;
+  const year = new Date().getFullYear();
 
   const benchmarkBlock = `
-BENCHMARK SETORIAL — ${bench.name} (fonte: SEBRAE / médias de PMEs brasileiras):
-- Margem Bruta típica: ${bench.grossMargin[0]}%–${bench.grossMargin[1]}%  →  Empresa: ${m.grossMargin.toFixed(1)}% ${m.grossMargin >= bench.grossMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
-- Margem Líquida típica: ${bench.netMargin[0]}%–${bench.netMargin[1]}%  →  Empresa: ${m.netMargin.toFixed(1)}% ${m.netMargin >= bench.netMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
-- CMV/Receita típico: ${bench.cmvPct[0]}%–${bench.cmvPct[1]}%  →  Empresa: ${actualCmvPct.toFixed(1)}% ${actualCmvPct <= bench.cmvPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
-Use esses benchmarks no diagnóstico para contextualizar o desempenho da empresa vs. mercado.`;
+BENCHMARK SETORIAL — ${bench.name} (fonte: SEBRAE ${year}, médias de PMEs brasileiras):
+- Margem Bruta típica: ${bench.grossMargin[0]}–${bench.grossMargin[1]}%  →  Empresa: ${m.grossMargin.toFixed(1)}% ${m.grossMargin >= bench.grossMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- Margem Líquida típica: ${bench.netMargin[0]}–${bench.netMargin[1]}%  →  Empresa: ${m.netMargin.toFixed(1)}% ${m.netMargin >= bench.netMargin[0] ? '✓ dentro da média' : '⚠ abaixo da média'}
+- CMV/Receita típico: ${bench.cmvPct[0]}–${bench.cmvPct[1]}%  →  Empresa: ${actualCmvPct.toFixed(1)}% ${actualCmvPct <= bench.cmvPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
+- Despesas Fixas típicas: ${bench.fixedCostPct[0]}–${bench.fixedCostPct[1]}% da receita  →  Empresa: ${actualFixedPct.toFixed(1)}% ${actualFixedPct <= bench.fixedCostPct[1] ? '✓ dentro da média' : '⚠ acima da média'}
+- Custo de pessoal típico: ${bench.laborPct[0]}–${bench.laborPct[1]}% da receita
+- Taxa de sobrevivência das empresas do setor (2 anos): ${bench.survivalRate2y}%
+- Ponto de equilíbrio típico do setor: ${bench.breakEvenPct[0]}–${bench.breakEvenPct[1]}% da capacidade
+Use esses benchmarks para contextualizar o desempenho da empresa vs. mercado em cada seção.`;
+
+  const macroBlock = buildMacroBlock(macroData);
 
   return `Você é um consultor financeiro especialista em pequenas e médias empresas brasileiras.
 Analise os dados financeiros abaixo e gere um diagnóstico completo.
@@ -77,6 +215,7 @@ ${buildItemsList(debtPaymentItems)}
 - Mistura conta pessoal/PJ: ${mixedAccounts ? 'SIM — risco crítico de gestão' : 'Não (contas separadas)'}
 
 ${benchmarkBlock}
+${macroBlock}
 
 CÁLCULOS AUTOMATIZADOS (use esses valores nos textos):
 - Lucro Líquido (o que vai pro bolso do dono): ${formatBRL(m.netProfit)}
@@ -126,8 +265,15 @@ router.post('/', requireAuth, limiter, async (req, res) => {
     return res.status(400).json({ error: 'Dados insuficientes para gerar o diagnóstico.' });
   }
 
+  // Busca macro em paralelo — max 5s por fetch, nunca bloqueia
+  const macroData = await getMacroData();
+
   const sse = openSSE(res);
-  const prompt = buildDiagnosisPrompt(req.body);
+
+  // Primeiro evento SSE: macro data (frontend captura antes do texto)
+  sse.sendMeta({ macro_data: macroData });
+
+  const prompt = buildDiagnosisPrompt(req.body, macroData);
 
   // Cancelamento: se cliente fecha aba, aborta o stream da Anthropic
   const ac = new AbortController();
