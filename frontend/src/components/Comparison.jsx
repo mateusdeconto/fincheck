@@ -12,101 +12,131 @@ function getLabel(record) {
   return new Date(record.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function Delta({ a, b, format = 'brl', invertColor = false }) {
-  if (b == null || b === 0) return <span className="text-ink-300 text-xs">—</span>;
-  const delta = a - b;
-  const pct = ((delta / Math.abs(b)) * 100).toFixed(1);
+function DeltaCell({ value, base, invertColor = false }) {
+  if (base == null || base === 0 || value === base) {
+    return <span className="font-mono text-sm font-semibold text-ink-600">{value}</span>;
+  }
+  const numVal  = typeof value  === 'string' ? parseFloat(value.replace(/[^0-9,.-]/g, '').replace(',', '.')) : value;
+  const numBase = typeof base   === 'string' ? parseFloat(base.replace(/[^0-9,.-]/g, '').replace(',', '.'))  : base;
+  const delta   = numVal - numBase;
   const positive = delta > 0;
-  const good = invertColor ? !positive : positive;
-  const color = delta === 0 ? 'text-ink-400' : good ? 'text-money-600' : 'text-loss-600';
-  const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
-  const formatted = format === 'brl'
-    ? formatBRL(Math.abs(delta))
-    : `${Math.abs(delta).toFixed(1)}${format === 'pct' ? 'pp' : '%'}`;
+  const good     = invertColor ? !positive : positive;
+  const color    = delta === 0 ? 'text-ink-500' : good ? 'text-money-600' : 'text-loss-600';
+  const arrow    = delta > 0 ? '↑' : '↓';
 
   return (
-    <span className={`text-xs font-bold ${color}`}>
-      {arrow} {formatted} ({Math.abs(pct)}%)
+    <span className={`font-mono text-sm font-semibold ${color}`}>
+      {value} <span className="text-[10px] font-bold opacity-80">{arrow}</span>
     </span>
   );
 }
 
-function Cell({ value, highlight }) {
-  return (
-    <td className={`px-4 py-3 font-mono text-sm font-semibold text-right ${highlight ? 'text-ink-900' : 'text-ink-600'}`}>
-      {value}
-    </td>
-  );
+const ROW_DEFS = [
+  { key: 'revenue',       label: 'Receita Bruta',      format: 'brl',  invertColor: false, highlight: false },
+  { key: 'cogs',          label: 'CMV',                format: 'brl',  invertColor: true,  highlight: false },
+  { key: 'grossProfit',   label: 'Lucro Bruto',        format: 'brl',  invertColor: false, highlight: true  },
+  { key: 'grossMargin',   label: 'Margem Bruta',       format: 'pct',  invertColor: false, highlight: false },
+  { key: 'fixedExpenses', label: 'Despesas Fixas',     format: 'brl',  invertColor: true,  highlight: false },
+  { key: 'ebitda',        label: 'EBITDA',             format: 'brl',  invertColor: false, highlight: false },
+  { key: 'debtPayment',   label: 'Dívidas/Parcelas',   format: 'brl',  invertColor: true,  highlight: false },
+  { key: 'netProfit',     label: 'Lucro Líquido',      format: 'brl',  invertColor: false, highlight: true  },
+  { key: 'netMargin',     label: 'Margem Líquida',     format: 'pct',  invertColor: false, highlight: true  },
+  { key: 'cashBalance',   label: 'Saldo de Caixa',     format: 'brl',  invertColor: false, highlight: false },
+  { key: 'breakEven',     label: 'Ponto de Equilíbrio',format: 'brl',  invertColor: true,  highlight: false },
+];
+
+function fmt(val, format) {
+  if (format === 'brl') return formatBRL(val);
+  return `${val.toFixed(1)}%`;
 }
 
-export default function Comparison({ recordA, recordB, onBack, onOpenChat, plan = 'free' }) {
-  const mA = useMemo(() => calcMetrics(recordA.financial_data), [recordA]);
-  const mB = useMemo(() => calcMetrics(recordB.financial_data), [recordB]);
-  const isPaid = plan === 'paid';
+export default function Comparison({ records = [], onBack, onOpenChat, plan = 'free' }) {
+  const isPaid     = plan === 'paid';
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const rows = [
-    { label: 'Receita Bruta',     a: formatBRL(mA.revenue),       b: formatBRL(mB.revenue),       delta: <Delta a={mA.revenue} b={mB.revenue} />,                         highlight: false },
-    { label: 'CMV',               a: formatBRL(mA.cogs),          b: formatBRL(mB.cogs),          delta: <Delta a={mA.cogs} b={mB.cogs} invertColor />,                   highlight: false },
-    { label: 'Lucro Bruto',       a: formatBRL(mA.grossProfit),   b: formatBRL(mB.grossProfit),   delta: <Delta a={mA.grossProfit} b={mB.grossProfit} />,                  highlight: true  },
-    { label: 'Margem Bruta',      a: `${mA.grossMargin.toFixed(1)}%`, b: `${mB.grossMargin.toFixed(1)}%`, delta: <Delta a={mA.grossMargin} b={mB.grossMargin} format="pct" />, highlight: false },
-    { label: 'Despesas Fixas',    a: formatBRL(mA.fixedExpenses), b: formatBRL(mB.fixedExpenses), delta: <Delta a={mA.fixedExpenses} b={mB.fixedExpenses} invertColor />,  highlight: false },
-    { label: 'EBITDA',            a: formatBRL(mA.ebitda),        b: formatBRL(mB.ebitda),        delta: <Delta a={mA.ebitda} b={mB.ebitda} />,                            highlight: false },
-    { label: 'Dívidas/Parcelas',  a: formatBRL(mA.debtPayment),   b: formatBRL(mB.debtPayment),   delta: <Delta a={mA.debtPayment} b={mB.debtPayment} invertColor />,      highlight: false },
-    { label: 'Lucro Líquido',     a: formatBRL(mA.netProfit),     b: formatBRL(mB.netProfit),     delta: <Delta a={mA.netProfit} b={mB.netProfit} />,                      highlight: true  },
-    { label: 'Margem Líquida',    a: `${mA.netMargin.toFixed(1)}%`, b: `${mB.netMargin.toFixed(1)}%`, delta: <Delta a={mA.netMargin} b={mB.netMargin} format="pct" />,   highlight: true  },
-    { label: 'Saldo de Caixa',    a: formatBRL(mA.cashBalance),   b: formatBRL(mB.cashBalance),   delta: <Delta a={mA.cashBalance} b={mB.cashBalance} />,                  highlight: false },
-    { label: 'Ponto de Equilíbrio', a: formatBRL(mA.breakEven),  b: formatBRL(mB.breakEven),     delta: <Delta a={mA.breakEven} b={mB.breakEven} invertColor />,           highlight: false },
-  ];
+  // metrics for each record
+  const allMetrics = useMemo(() => records.map(r => calcMetrics(r.financial_data)), [records]);
 
-  const revenueGrew = mA.revenue > mB.revenue;
-  const profitGrew  = mA.netProfit > mB.netProfit;
-  const marginGrew  = mA.netMargin > mB.netMargin;
+  if (!records.length) return null;
+
+  const base   = allMetrics[0]; // first record = most recent = base
+  const others = allMetrics.slice(1);
+
+  // Summary cards: base vs second record (most direct comparison)
+  const prev = allMetrics[1];
+  const summaryCards = prev ? [
+    { label: 'Receita',        grew: base.revenue   > prev.revenue,   a: fmt(base.revenue,   'brl'), b: fmt(prev.revenue,   'brl') },
+    { label: 'Lucro líquido',  grew: base.netProfit > prev.netProfit, a: fmt(base.netProfit, 'brl'), b: fmt(prev.netProfit, 'brl') },
+    { label: 'Margem líquida', grew: base.netMargin > prev.netMargin, a: fmt(base.netMargin, 'pct'), b: fmt(prev.netMargin, 'pct') },
+  ] : [];
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <div className="w-full max-w-4xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Comparação</h1>
-        <p className="text-sm text-ink-400 mt-0.5">{recordA.business_name}</p>
+        <p className="text-sm text-ink-400 mt-0.5">
+          {records[0].business_name} · {records.length} {records.length === 1 ? 'período' : 'períodos'}
+        </p>
       </div>
 
-      {/* Resumo do que mudou */}
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: 'Receita',        grew: revenueGrew, a: formatBRL(mA.revenue),              b: formatBRL(mB.revenue) },
-          { label: 'Lucro líquido',  grew: profitGrew,  a: formatBRL(mA.netProfit),            b: formatBRL(mB.netProfit) },
-          { label: 'Margem líquida', grew: marginGrew,  a: `${mA.netMargin.toFixed(1)}%`,      b: `${mB.netMargin.toFixed(1)}%` },
-        ].map(card => (
-          <div key={card.label} className={`rounded-xl border p-3 ${card.grew ? 'bg-money-50 border-money-200' : 'bg-loss-50 border-loss-200'}`}>
-            <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{card.label}</p>
-            <p className={`text-base font-bold font-mono ${card.grew ? 'text-money-700' : 'text-loss-700'}`}>{card.a}</p>
-            <p className="text-xs text-ink-400 mt-0.5">antes: {card.b}</p>
-          </div>
-        ))}
-      </div>
+      {/* Resumo (base vs anterior imediato) */}
+      {summaryCards.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {summaryCards.map(card => (
+            <div key={card.label} className={`rounded-xl border p-3 ${card.grew ? 'bg-money-50 border-money-200' : 'bg-loss-50 border-loss-200'}`}>
+              <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{card.label}</p>
+              <p className={`text-base font-bold font-mono ${card.grew ? 'text-money-700' : 'text-loss-700'}`}>{card.a}</p>
+              <p className="text-xs text-ink-400 mt-0.5">antes: {card.b}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Tabela completa */}
+      {/* Tabela multi-período */}
       <div className="bg-white border border-ink-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-ink-50 border-b border-ink-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-500 uppercase tracking-wider">Indicador</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-900 uppercase tracking-wider">
-                  {getLabel(recordA)}
-                  <span className="ml-1.5 text-[9px] font-bold bg-ink-900 text-white px-1.5 py-0.5 rounded-full">novo</span>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-500 uppercase tracking-wider sticky left-0 bg-ink-50 z-10">
+                  Indicador
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-500 uppercase tracking-wider">{getLabel(recordB)}</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-ink-500 uppercase tracking-wider">Variação</th>
+                {records.map((rec, i) => (
+                  <th key={rec.id} className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider whitespace-nowrap min-w-[130px]"
+                    style={{ color: i === 0 ? '#111' : '#6b7280' }}>
+                    {getLabel(rec)}
+                    {i === 0 && (
+                      <span className="ml-1.5 text-[9px] font-bold bg-ink-900 text-white px-1.5 py-0.5 rounded-full">base</span>
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
-              {rows.map(row => (
-                <tr key={row.label} className={row.highlight ? 'bg-ink-50/50' : ''}>
-                  <td className={`px-4 py-3 text-sm ${row.highlight ? 'font-bold text-ink-800' : 'text-ink-600'}`}>{row.label}</td>
-                  <Cell value={row.a} highlight={row.highlight} />
-                  <Cell value={row.b} highlight={false} />
-                  <td className="px-4 py-3 text-right">{row.delta}</td>
+              {ROW_DEFS.map(row => (
+                <tr key={row.key} className={row.highlight ? 'bg-ink-50/50' : ''}>
+                  <td className={`px-4 py-3 text-sm sticky left-0 bg-white ${row.highlight ? 'font-bold text-ink-800 bg-ink-50/50' : 'text-ink-600'}`}>
+                    {row.label}
+                  </td>
+                  {allMetrics.map((m, i) => {
+                    const rawVal  = m[row.key];
+                    const rawBase = allMetrics[0][row.key];
+                    const display = fmt(rawVal, row.format);
+
+                    return (
+                      <td key={i} className={`px-4 py-3 text-right ${row.highlight ? 'font-bold' : ''}`}>
+                        {i === 0 ? (
+                          <span className="font-mono text-sm font-semibold text-ink-900">{display}</span>
+                        ) : (
+                          <DeltaCell
+                            value={display}
+                            base={rawBase}
+                            invertColor={row.invertColor}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

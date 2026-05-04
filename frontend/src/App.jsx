@@ -190,8 +190,8 @@ export default function App() {
     setStep(STEPS.DIAGNOSIS);
   }
 
-  function handleCompare(recordA, recordB) {
-    setComparisonPair([recordA, recordB]);
+  function handleCompare(...records) {
+    setComparisonPair(records.flat());
     setStep(STEPS.COMPARISON);
   }
 
@@ -268,8 +268,7 @@ export default function App() {
 
           {step === STEPS.COMPARISON && comparisonPair && (
             <Comparison
-              recordA={comparisonPair[0]}
-              recordB={comparisonPair[1]}
+              records={comparisonPair}
               onBack={() => setStep(STEPS.HISTORY)}
               plan={plan}
               onOpenChat={() => { setChatOrigin(STEPS.COMPARISON); setStep(STEPS.CHAT); }}

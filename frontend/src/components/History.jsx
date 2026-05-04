@@ -41,16 +41,26 @@ function recordLabel(rec) {
     : formatDate(rec.created_at);
 }
 
-/* ── Modal: escolher período ────────────────────────────────────────────── */
+/* ── Modal: escolher períodos ───────────────────────────────────────────── */
 function PeriodPickerModal({ baseRecord, records, onConfirm, onClose }) {
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const others = records.filter(r => r.id !== baseRecord.id);
+
+  function toggle(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const count = selectedIds.size;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in">
         <div className="px-5 pt-5 pb-3 border-b border-ink-100">
-          <h3 className="font-bold text-ink-900 text-base">Escolher período para comparar</h3>
+          <h3 className="font-bold text-ink-900 text-base">Escolher períodos para comparar</h3>
           <p className="text-xs text-ink-400 mt-0.5">
             Base: <span className="font-semibold text-ink-700">{recordLabel(baseRecord)}</span>
           </p>
@@ -59,18 +69,17 @@ function PeriodPickerModal({ baseRecord, records, onConfirm, onClose }) {
         <div className="overflow-y-auto max-h-72 divide-y divide-ink-100">
           {others.map(rec => {
             const m = calcMetrics(rec.financial_data);
-            const isChecked = selectedId === rec.id;
+            const isChecked = selectedIds.has(rec.id);
             return (
               <label
                 key={rec.id}
                 className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer transition-colors ${isChecked ? 'bg-brand-50' : 'hover:bg-ink-50'}`}
               >
                 <input
-                  type="radio"
-                  name="period"
+                  type="checkbox"
                   checked={isChecked}
-                  onChange={() => setSelectedId(rec.id)}
-                  className="w-4 h-4 accent-ink-900 flex-shrink-0"
+                  onChange={() => toggle(rec.id)}
+                  className="w-4 h-4 rounded accent-ink-900 flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-ink-800">{recordLabel(rec)}</p>
@@ -92,13 +101,13 @@ function PeriodPickerModal({ baseRecord, records, onConfirm, onClose }) {
           </button>
           <button
             onClick={() => {
-              const rec = records.find(r => r.id === selectedId);
-              if (rec) onConfirm(baseRecord, rec);
+              const chosen = others.filter(r => selectedIds.has(r.id));
+              if (chosen.length > 0) onConfirm(baseRecord, chosen);
             }}
-            disabled={!selectedId}
+            disabled={count === 0}
             className="flex-1 py-2.5 text-sm font-semibold text-white bg-ink-900 rounded-xl hover:bg-ink-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Comparar
+            {count === 0 ? 'Comparar' : `Comparar (${count + 1} períodos)`}
           </button>
         </div>
       </div>
@@ -388,7 +397,7 @@ export default function History({ records, onSelect, onCompare, onNewAnalysis, o
         <PeriodPickerModal
           baseRecord={pickerBase}
           records={records}
-          onConfirm={(a, b) => { setPickerBase(null); onCompare(a, b); }}
+          onConfirm={(base, chosen) => { setPickerBase(null); onCompare(base, ...chosen); }}
           onClose={() => setPickerBase(null)}
         />
       )}

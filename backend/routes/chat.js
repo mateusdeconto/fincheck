@@ -20,36 +20,37 @@ function formatBRL(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 
+function periodLabel(record) {
+  const ref = record.financial_data?.referenceMonth;
+  if (ref) {
+    const [y, m] = ref.split('-');
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+  return new Date(record.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
 function buildComparisonSection(comparisonPair) {
   if (!comparisonPair || comparisonPair.length < 2) return '';
-  const [a, b] = comparisonPair;
-  const mA = calcMetrics(a.financial_data);
-  const mB = calcMetrics(b.financial_data);
-  const dateA = a.financial_data?.referenceMonth || new Date(a.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const dateB = b.financial_data?.referenceMonth || new Date(b.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-  return `
+  const entries = comparisonPair.map(r => ({ label: periodLabel(r), m: calcMetrics(r.financial_data) }));
+  const base = entries[0];
 
-COMPARAÇÃO ENTRE PERÍODOS (o usuário está analisando esta comparação agora):
-Período MAIS RECENTE (${dateA}):
-- Receita: ${formatBRL(mA.revenue)} | Lucro Líquido: ${formatBRL(mA.netProfit)} (${mA.netMargin.toFixed(1)}%)
-- Margem Bruta: ${mA.grossMargin.toFixed(1)}% | EBITDA: ${formatBRL(mA.ebitda)}
-- Despesas Fixas: ${formatBRL(mA.fixedExpenses)} | Caixa: ${formatBRL(mA.cashBalance)}
-- Ponto de Equilíbrio: ${formatBRL(mA.breakEven)}
+  let section = `\n\nCOMPARAÇÃO MULTI-PERÍODO (${entries.length} períodos — o usuário está analisando esta comparação agora):\n`;
 
-Período ANTERIOR (${dateB}):
-- Receita: ${formatBRL(mB.revenue)} | Lucro Líquido: ${formatBRL(mB.netProfit)} (${mB.netMargin.toFixed(1)}%)
-- Margem Bruta: ${mB.grossMargin.toFixed(1)}% | EBITDA: ${formatBRL(mB.ebitda)}
-- Despesas Fixas: ${formatBRL(mB.fixedExpenses)} | Caixa: ${formatBRL(mB.cashBalance)}
-- Ponto de Equilíbrio: ${formatBRL(mB.breakEven)}
+  entries.forEach((e, i) => {
+    section += `\n${i === 0 ? 'PERÍODO BASE' : `PERÍODO ${i}`} (${e.label}):\n`;
+    section += `- Receita: ${formatBRL(e.m.revenue)} | Lucro Líquido: ${formatBRL(e.m.netProfit)} (${e.m.netMargin.toFixed(1)}%)\n`;
+    section += `- Margem Bruta: ${e.m.grossMargin.toFixed(1)}% | EBITDA: ${formatBRL(e.m.ebitda)}\n`;
+    section += `- Despesas Fixas: ${formatBRL(e.m.fixedExpenses)} | Caixa: ${formatBRL(e.m.cashBalance)}\n`;
+    section += `- Ponto de Equilíbrio: ${formatBRL(e.m.breakEven)}\n`;
+    if (i > 0) {
+      const pct = (v, b) => b > 0 ? `${(((v - b) / Math.abs(b)) * 100).toFixed(1)}%` : '—';
+      section += `  ↳ vs base: Receita ${pct(e.m.revenue, base.m.revenue)} | Lucro ${pct(e.m.netProfit, base.m.netProfit)} | Margem ${(e.m.netMargin - base.m.netMargin).toFixed(1)}pp\n`;
+    }
+  });
 
-VARIAÇÕES (mais recente vs anterior):
-- Receita: ${formatBRL(mA.revenue - mB.revenue)} (${mB.revenue > 0 ? (((mA.revenue - mB.revenue) / mB.revenue) * 100).toFixed(1) : '—'}%)
-- Lucro Líquido: ${formatBRL(mA.netProfit - mB.netProfit)}
-- Margem Líquida: ${(mA.netMargin - mB.netMargin).toFixed(1)}pp
-- Despesas Fixas: ${formatBRL(mA.fixedExpenses - mB.fixedExpenses)}
-
-Foque sua análise nesta comparação quando o usuário perguntar sobre evolução, tendências ou diferenças entre períodos.`;
+  section += `\nFoque sua análise nesta comparação quando o usuário perguntar sobre evolução, tendências ou diferenças entre períodos.`;
+  return section;
 }
 
 function buildSystemPrompt({ businessName, segment, financialData, diagnosis, allDiagnoses = [], comparisonPair = null }) {
