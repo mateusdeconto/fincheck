@@ -66,9 +66,9 @@ export default function Comparison({ records = [], onBack, onOpenChat, plan = 'f
   const isPaid = plan === 'paid';
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  // Ordena do mais recente (index 0 = base) ao mais antigo
+  // Ordena do mais antigo (index 0 = base) ao mais recente
   const sorted = useMemo(
-    () => [...records].sort((a, b) => getSortKey(b).localeCompare(getSortKey(a))),
+    () => [...records].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b))),
     [records],
   );
 
@@ -76,13 +76,14 @@ export default function Comparison({ records = [], onBack, onOpenChat, plan = 'f
 
   if (!sorted.length) return null;
 
-  const base = allMetrics[0];
-  const prev = allMetrics[1];
+  const base    = allMetrics[0];                          // mais antigo = referência
+  const latest  = allMetrics[allMetrics.length - 1];     // mais recente
+  const hasDiff = allMetrics.length > 1;
 
-  const summaryCards = prev ? [
-    { label: 'Receita',        grew: base.revenue   > prev.revenue,   a: fmt(base.revenue,   'brl'), b: fmt(prev.revenue,   'brl') },
-    { label: 'Lucro líquido',  grew: base.netProfit > prev.netProfit, a: fmt(base.netProfit, 'brl'), b: fmt(prev.netProfit, 'brl') },
-    { label: 'Margem líquida', grew: base.netMargin > prev.netMargin, a: fmt(base.netMargin, 'pct'), b: fmt(prev.netMargin, 'pct') },
+  const summaryCards = hasDiff ? [
+    { label: 'Receita',        grew: latest.revenue   > base.revenue,   a: fmt(latest.revenue,   'brl'), b: fmt(base.revenue,   'brl') },
+    { label: 'Lucro líquido',  grew: latest.netProfit > base.netProfit, a: fmt(latest.netProfit, 'brl'), b: fmt(base.netProfit, 'brl') },
+    { label: 'Margem líquida', grew: latest.netMargin > base.netMargin, a: fmt(latest.netMargin, 'pct'), b: fmt(base.netMargin, 'pct') },
   ] : [];
 
   return (
@@ -101,7 +102,7 @@ export default function Comparison({ records = [], onBack, onOpenChat, plan = 'f
             <div key={card.label} className={`rounded-xl border p-3 ${card.grew ? 'bg-money-50 border-money-200' : 'bg-loss-50 border-loss-200'}`}>
               <p className="text-[10px] font-semibold text-ink-400 uppercase tracking-wider mb-2">{card.label}</p>
               <p className={`text-base font-bold font-mono ${card.grew ? 'text-money-700' : 'text-loss-700'}`}>{card.a}</p>
-              <p className="text-xs text-ink-400 mt-0.5">antes: {card.b}</p>
+              <p className="text-xs text-ink-400 mt-0.5">base: {card.b}</p>
             </div>
           ))}
         </div>
