@@ -60,6 +60,13 @@ export default {
           700: '#B2271E',
         },
 
+        // Verde floresta — hero, botão CTA editorial
+        forest: {
+          50:  '#EDF5F0',
+          600: '#1A7A4A',
+          700: '#145E38',
+        },
+
         // Navy — seções escuras hero/CTA
         navy: {
           800: '#0C1528',
@@ -69,6 +76,7 @@ export default {
       },
 
       fontFamily: {
+        serif: ['"Fraunces"', 'Georgia', 'serif'],
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },

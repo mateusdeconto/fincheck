@@ -42,10 +42,7 @@ function Logo({ dark = false }) {
 function ReportCard() {
   return (
     <div className="relative">
-      {/* Glow de fundo */}
-      <div className="absolute -inset-4 bg-money-500/10 rounded-3xl blur-xl" />
-
-      <div className="relative bg-white rounded-2xl shadow-lg border border-ink-200 overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-md border border-ink-200 overflow-hidden">
         {/* Header do card */}
         <div className="bg-navy-900 px-5 py-4">
           <div className="flex items-center gap-1.5 mb-3">
@@ -279,7 +276,7 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
               </svg>
               Histórico
             </button>
-            <button onClick={onEnter} className="ml-2 px-4 py-2 bg-money-500 hover:bg-money-600 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm">
+            <button onClick={onEnter} className="ml-2 px-4 py-2 bg-forest-600 hover:bg-forest-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm">
               {user ? 'Minha conta' : 'Começar grátis'}
             </button>
           </nav>
@@ -288,36 +285,37 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
 
       {/* ── HERO ────────────────────────────────────────── */}
       <section className="hero-section">
-        <div className="noise-overlay" />
-        <div className="landing-container relative z-10 pt-20 pb-24 sm:pt-32 sm:pb-32">
-          <div className="grid lg:grid-cols-[1fr_1fr] gap-12 lg:gap-16 items-center">
+        <div className="landing-container relative z-10 pt-24 pb-28 sm:pt-36 sm:pb-36">
+          <div className="grid lg:grid-cols-[1fr_1fr] gap-14 lg:gap-20 items-center">
 
             {/* Texto */}
             <div className="max-w-xl">
               <Reveal>
-                <div className="inline-flex items-center gap-2.5 mb-6 px-4 py-1.5 rounded-full border border-money-500/30 bg-money-500/10">
-                  <span className="w-1.5 h-1.5 rounded-full bg-money-400 animate-pulse" />
-                  <span className="text-xs font-semibold text-money-300 tracking-wide">
+                <div className="inline-flex items-center gap-2.5 mb-7 px-4 py-1.5 rounded-full border border-forest-600/20 bg-forest-50">
+                  <span className="w-1.5 h-1.5 rounded-full bg-forest-600 animate-pulse" />
+                  <span className="text-xs font-semibold text-forest-600 tracking-wide">
                     Grátis para começar · CFO Virtual para PMEs
                   </span>
                 </div>
               </Reveal>
 
               <Reveal delay={80}>
-                <h1 className="text-[2.6rem] sm:text-5xl md:text-[3.4rem] font-extrabold text-white
-                               leading-[1.03] tracking-tightest mb-6">
+                <h1 className="font-serif font-bold text-ink-800
+                               text-[2.8rem] sm:text-5xl md:text-[3.6rem]
+                               leading-[1.05] tracking-tight mb-7">
                   Seu negócio
                   <br />
-                  <span className="text-money-400">dá lucro</span>
+                  <span className="text-forest-600">dá lucro</span>
                   <br />
                   de verdade?
                 </h1>
               </Reveal>
 
               <Reveal delay={160}>
-                <p className="text-lg text-white/60 leading-relaxed mb-10 max-w-md">
+                <p className="text-lg text-ink-500 leading-relaxed mb-10 max-w-md">
                   Em 5 minutos o FinCheck olha seus números e te diz onde está o lucro,
-                  onde está sangrando dinheiro e o que fazer <em className="text-white/80 not-italic font-medium">essa semana</em>.
+                  onde está sangrando dinheiro e o que fazer{' '}
+                  <em className="text-ink-700 not-italic font-medium">essa semana</em>.
                   Sem jargão de contador.
                 </p>
               </Reveal>
@@ -329,19 +327,19 @@ export default function Landing({ onEnter, user, plan, onHistory }) {
                     <ArrowRight size={15} />
                   </button>
                   <a href="#como-funciona"
-                    className="text-sm font-semibold text-white/50 hover:text-white/80 transition-colors py-2">
+                    className="text-sm font-semibold text-ink-400 hover:text-ink-700 transition-colors py-2">
                     Ver como funciona →
                   </a>
                 </div>
-                <div className="flex items-center gap-5 mt-8">
+                <div className="flex items-center gap-6 mt-10 pt-8 border-t border-ink-200">
                   {[
                     { n: '5 min', label: 'para o diagnóstico' },
                     { n: '100%', label: 'gratuito para começar' },
                     { n: 'IA', label: 'com dados do seu setor' },
                   ].map(s => (
                     <div key={s.n}>
-                      <p className="text-xl font-bold text-white font-mono">{s.n}</p>
-                      <p className="text-[11px] text-white/40 mt-0.5">{s.label}</p>
+                      <p className="text-xl font-bold text-ink-800 font-mono">{s.n}</p>
+                      <p className="text-[11px] text-ink-400 mt-0.5">{s.label}</p>
                     </div>
                   ))}
                 </div>
