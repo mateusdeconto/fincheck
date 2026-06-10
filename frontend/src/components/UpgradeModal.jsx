@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { trackEvent } from '../lib/analytics.js';
 
 const ALL_PLANS = [
   {
@@ -227,19 +228,21 @@ export default function UpgradeModal({ onClose, currentPlan = 'free' }) {
                         Plano atual
                       </div>
                     ) : isMax ? (
-                      <div
-                        className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-ink-900 cursor-default select-none"
+                      <button
+                        onClick={() => trackEvent('upgrade_plan_clicked', { plan: p.id, period })}
+                        className="w-full py-2.5 rounded-xl text-center text-xs font-bold text-ink-900 cursor-pointer"
                         style={{ background: 'linear-gradient(90deg, #F59E0B, #FBBF24)' }}
                       >
                         💳 Em breve
-                      </div>
+                      </button>
                     ) : (
-                      <div
-                        className="w-full py-2.5 rounded-xl text-center text-xs font-semibold text-white/40 cursor-default select-none"
+                      <button
+                        onClick={() => trackEvent('upgrade_plan_clicked', { plan: p.id, period })}
+                        className="w-full py-2.5 rounded-xl text-center text-xs font-semibold text-white/40 cursor-pointer hover:text-white/60 transition-colors"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                       >
                         💳 Em breve
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>

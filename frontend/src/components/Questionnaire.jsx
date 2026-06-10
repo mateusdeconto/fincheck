@@ -273,6 +273,33 @@ function buildInitialValues(init) {
   };
 }
 
+// Retorna aviso de plausibilidade para o campo atual
+function getPlausibilityWarning(field, values, segment) {
+  if (field !== 'cogs') return null;
+  const rev = parseFormattedValue(values.revenue);
+  const cogs = parseFormattedValue(values.cogs);
+  if (rev <= 0 || cogs <= 0) return null;
+
+  if (cogs >= rev) {
+    return { type: 'loss', message: 'CMV maior ou igual à receita — o custo direto consumiu tudo que entrou. Confira se os valores estão certos.' };
+  }
+
+  const bench = SECTOR_BENCHMARKS[segment] || SECTOR_BENCHMARKS.outro;
+  if (!bench?.cmvPct) return null;
+
+  const [low, high] = bench.cmvPct;
+  const cogsPct = (cogs / rev) * 100;
+
+  if (cogsPct < low * 0.35) {
+    return { type: 'warn', message: `CMV de ${cogsPct.toFixed(1)}% parece muito baixo para este setor (média: ${low}–${high}%). Tem certeza que incluiu todos os custos diretos?` };
+  }
+  if (cogsPct > high * 1.8) {
+    return { type: 'warn', message: `CMV de ${cogsPct.toFixed(1)}% está bem acima da média do setor (${low}–${high}%). Confira se os valores estão corretos.` };
+  }
+
+  return null;
+}
+
 // Calcula valor numérico atual do campo (lida com itemized)
 function valueOf(values, field, isItemized) {
   if (isItemized) {
@@ -657,6 +684,25 @@ export default function Questionnaire({ onComplete, onBack, initialValues = null
                   </div>
                 ) : null;
               })()}
+              {/* Aviso de plausibilidade — só aparece quando há valor digitado e fora do esperado */}
+              {(() => {
+                const warn = getPlausibilityWarning(question.field, values, businessData.segment);
+                if (!warn) return null;
+                const isLoss = warn.type === 'loss';
+                return (
+                  <div className={`mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg border text-xs leading-relaxed animate-fade-in ${
+                    isLoss
+                      ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  }`}>
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {warn.message}
+                  </div>
+                );
+              })()}
+
               {isChoice ? (
                 <div className="space-y-2.5 mb-2">
                   {question.options.map(opt => {

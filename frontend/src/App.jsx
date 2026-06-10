@@ -287,7 +287,7 @@ export default function App() {
   function handleCreateAnotherCompany() {
     const limits = getPlanLimits(plan);
     if (savedCompanies.length >= limits.maxCompanies) {
-      setShowUpgradeModal(true);
+      openUpgradeModal('company_limit');
       return;
     }
     setActiveCompany(null);
@@ -343,10 +343,10 @@ export default function App() {
 
   async function handleOpenWeeklyPlan(origin = STEPS.DIAGNOSIS) {
     const limits = getPlanLimits(plan);
-    if (limits.weeklyPlansPerMonth === 0) { setShowUpgradeModal(true); return; }
+    if (limits.weeklyPlansPerMonth === 0) { openUpgradeModal('weekly_plan_limit'); return; }
     if (user) {
       const monthCount = await countWeeklyPlansThisMonth(user.id);
-      if (monthCount >= limits.weeklyPlansPerMonth) { setShowUpgradeModal(true); return; }
+      if (monthCount >= limits.weeklyPlansPerMonth) { openUpgradeModal('weekly_plan_limit'); return; }
     }
     setWeeklyPlanOrigin(origin);
     setStep(STEPS.WEEKLY_PLAN);
@@ -354,10 +354,10 @@ export default function App() {
 
   async function handleOpenWeeklyPlanFromPrevious(company) {
     const limits = getPlanLimits(plan);
-    if (limits.weeklyPlansPerMonth === 0) { setShowUpgradeModal(true); return; }
+    if (limits.weeklyPlansPerMonth === 0) { openUpgradeModal('weekly_plan_limit'); return; }
     if (user) {
       const monthCount = await countWeeklyPlansThisMonth(user.id);
-      if (monthCount >= limits.weeklyPlansPerMonth) { setShowUpgradeModal(true); return; }
+      if (monthCount >= limits.weeklyPlansPerMonth) { openUpgradeModal('weekly_plan_limit'); return; }
     }
     const latestRecord = recordsForCompany(allDiagnoses, company)[0];
     if (!latestRecord) return;
@@ -370,7 +370,7 @@ export default function App() {
   }
 
   function handleOpenCanOrNot(company, origin = STEPS.PREVIOUS) {
-    if (!getPlanLimits(plan).hasCanOrNot) { setShowUpgradeModal(true); return; }
+    if (!getPlanLimits(plan).hasCanOrNot) { openUpgradeModal('can_or_not_gate'); return; }
     const latestRecord = recordsForCompany(allDiagnoses, company)[0];
     if (!latestRecord) return;
 
@@ -389,13 +389,20 @@ export default function App() {
 
     syncCompanyState(data);
     setBusinessData(data);
+    trackEvent('questionnaire_started', { segment: data.segment });
     setStep(STEPS.QUESTIONNAIRE);
   }
 
+  function openUpgradeModal(trigger = 'unknown') {
+    trackEvent('upgrade_modal_shown', { trigger });
+    setShowUpgradeModal(true);
+  }
+
   function handleQuestionnaireComplete(data) {
+    trackEvent('questionnaire_completed', { segment: businessData.segment });
     const limits = getPlanLimits(plan);
     if (limits.maxDiagnoses !== Infinity && allDiagnoses.length >= limits.maxDiagnoses) {
-      setShowUpgradeModal(true);
+      openUpgradeModal('diagnosis_limit');
       return;
     }
     setFinancialData({ ...data, referenceMonth: businessData.referenceMonth });
@@ -413,6 +420,7 @@ export default function App() {
     setDiagnosis(text);
     if (macro)       setMacroData(macro);
     if (jsonResult)  setDiagnosisResult(jsonResult);
+    trackEvent('diagnosis_viewed', { segment: businessData.segment });
     setStep(STEPS.DIAGNOSIS);
 
     if (user) {
